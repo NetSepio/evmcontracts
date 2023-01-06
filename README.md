@@ -1,7 +1,7 @@
 
 
 
-# EREBUS
+# EREBRUS
 
 We are trying to implement a Utility NFT where subscription, royalty for the creator, 
 and rental facilities are available, 
