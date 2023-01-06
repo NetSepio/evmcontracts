@@ -1,11 +1,9 @@
 
-![Logo](https://ipfs.io/ipfs/Qmc8n1dxDfypkEagsv2WwSsvG9bPTLqYp4B5H5ZxZoiHpW?filename=hello.jpg)
 
 
-# EREBUS NFT
+# EREBUS
 
-We are trying to implement a Utility NFT in 
-Myriad Flow where subscription, royalty for the creator, 
+We are trying to implement a Utility NFT where subscription, royalty for the creator, 
 and rental facilities are available, 
 the NFT will be disclosed on the closing date, 
 and the wallet address will be whitelisted prior to that. 
