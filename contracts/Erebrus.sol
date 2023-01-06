@@ -12,7 +12,7 @@ import "./@rarible/royalties/contracts/IERC2981.sol";
 import "./@rarible/royalties/contracts/LibRoyaltiesV2.sol";
 import "./@rarible/royalties/contracts/LibPart.sol";
 
-contract Erebus is Subscription, Ownable, RoyaltiesV2Impl {
+contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
     mapping(address => bool) public allowList;
 
     using Counters for Counters.Counter;
