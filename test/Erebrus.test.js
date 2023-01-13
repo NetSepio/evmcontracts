@@ -1,12 +1,12 @@
 const { ethers, run, network } = require("hardhat")
 const { expect, assert, use } = require("chai")
 
-describe("Nft ", function () {
+describe("Nft ", function() {
     let NftFactory, sendValue, Nft
     let pPrice = ethers.utils.parseEther("1")
     let aPrice = ethers.utils.parseEther("0.01")
 
-    beforeEach(async function () {
+    beforeEach(async function() {
         NftFactory = await ethers.getContractFactory("Erebrus")
         Nft = await NftFactory.deploy("www.notreveal.com", pPrice, aPrice)
         accounts = await ethers.getSigners()
@@ -18,7 +18,6 @@ describe("Nft ", function () {
         let publicMintingPrice = await Nft.publicprice()
         let price1 = ethers.utils.parseEther("1")
         let price2 = ethers.utils.parseEther("0.01")
-        y
         assert(URI.toString() == "www.notreveal.com")
         assert(publicMintingPrice.toString() == price1.toString())
     })
@@ -33,7 +32,7 @@ describe("Nft ", function () {
         assert(publicMintingPrice, Publicprice)
     })
 
-    it("To check if the reveal , public minting  & editMintWindows is working or not", async function () {
+    it("To check if the reveal , public minting  & editMintWindows is working or not", async function() {
         Nft.editMintWindows(true, false)
         for (let i = 0; i < 2; i++) {
             await Nft.publicMint({ value: sendValue })
@@ -58,7 +57,7 @@ describe("Nft ", function () {
         }
     })
 
-    describe("withdraw", function () {
+    describe("withdraw", function() {
         let accounts, deployer
         beforeEach(async () => {
             Nft.editMintWindows(true, false)
@@ -99,7 +98,7 @@ describe("Nft ", function () {
                 endingDeployerBalance.add(gasCost).toString()
             )
         })
-        it("Only allows the owner to withdraw", async function () {
+        it("Only allows the owner to withdraw", async function() {
             const accounts = await ethers.getSigners()
             const NftConnectedContract = await Nft.connect(accounts[1])
             await expect(NftConnectedContract.withdraw()).to.be.revertedWith(

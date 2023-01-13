@@ -9,13 +9,13 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     const PublicValue = await ethers.utils.parseEther("1")
     const allowlistValue = await ethers.utils.parseEther("0.01")
     log("----------------------------------------------------")
-    log("Deploying Nft and waiting for confirmations...")
+    log("Deploying Erebrus and waiting for confirmations...")
     const Nft = await deploy("Erebrus", {
         from: deployer,
         args: ["https://github.com/", PublicValue, allowlistValue],
         log: true,
         // we need to wait if on a live network so we can verify properly
-        waitConfirmations: network.config.blockConfirmations || 3,
+        waitConfirmations: network.config.blockConfirmations || 1
     })
     log(`Nft deployed at ${Nft.address}`)
 
@@ -27,4 +27,4 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     }
 }
 
-module.exports.tags = ["all", "fundme"]
+module.exports.tags = ["Erebrus"]
