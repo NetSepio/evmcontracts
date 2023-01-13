@@ -11,15 +11,16 @@ import "./@rarible/royalties/contracts/impl/RoyaltiesV2Impl.sol";
 import "./@rarible/royalties/contracts/IERC2981.sol";
 import "./@rarible/royalties/contracts/LibRoyaltiesV2.sol";
 import "./@rarible/royalties/contracts/LibPart.sol";
+import "./DelayedReveal.sol";
 
-contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
+contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl, DelayedReveal {
     mapping(address => bool) public allowList;
 
     using Counters for Counters.Counter;
 
     uint256 public immutable i_maxSupply = 2000; //2000
+    uint private immutable batchId = 1;
 
-    string private revealURI;
     uint256 private totalSupply = 0;
 
     uint balance;
@@ -50,11 +51,7 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
         allowListprice = _allowListprice;
     }
 
-    function setRevealUri(string memory _uri) external onlyOwner {
-        revealURI = _uri;
-    }
-
-    function reveal() external onlyOwner {
+    function revealStatus() public onlyOwner {
         revealed = true;
     }
 
@@ -72,14 +69,40 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
 
     //reveal the token URI by overriding the function
     function tokenURI(
-        uint256 tokenId
-    ) public view virtual override returns (string memory) {
-        require(tokenId <= totalSupply, "non existent token");
-        if (revealed != true) {
-            return super.tokenURI(tokenId);
+        uint256 _tokenId
+    ) public view override returns (string memory) {
+        console.log("there token is %s", _tokenId);
+        string memory batchUri = _getBaseURI(); //ERC721
+        if (revealed) {
+            return string(abi.encodePacked(batchUri, "/", _tokenId));
         } else {
-            return revealURI;
+            return batchUri;
         }
+    }
+
+    function setReveal(
+        string memory _URI,
+        string memory _key
+    ) public onlyOwner {
+        bytes memory hashURI = abi.encode(_URI);
+        bytes memory hashkey = abi.encode(_key);
+
+        bytes memory encryptedURI = encryptDecrypt(hashURI, hashkey);
+        _setEncryptedData(batchId, encryptedURI);
+    }
+
+    function reveal(
+        bytes memory _key
+    ) external returns (string memory revealedURI) {
+        require(_canReveal(), "Not authorized");
+        require(revealed, "It is still not activated");
+
+        revealedURI = getRevealURI(batchId, _key);
+        _setBaseURI(revealedURI);
+    }
+
+    function _setBaseURI(string memory _URI) private {
+        baseURI = _URI;
     }
 
     function UpdateAllowList(address _user, bool _flag) external onlyOwner {
@@ -138,7 +161,12 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
 
     /**Getter Functions **/
 
-    function _baseURI() internal view override returns (string memory) {
+    /// @dev Checks whether NFTs can be revealed in the given execution context.
+    function _canReveal() internal view virtual returns (bool) {
+        return msg.sender == owner();
+    }
+
+    function _getBaseURI() internal view returns (string memory) {
         return baseURI;
     }
 
