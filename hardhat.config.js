@@ -1,33 +1,31 @@
 require("@nomiclabs/hardhat-waffle")
 require("hardhat-gas-reporter")
 require("@nomiclabs/hardhat-etherscan")
+
 require("dotenv").config()
 require("solidity-coverage")
 require("hardhat-deploy")
 
-const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY
-const GOERLI_RPC_URL = process.env.GOERLI_RPC_URL
-const PRIVATE_KEY = process.env.PRIVATE_KEY
-const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY
+const fs = require('fs');
+require('dotenv').config()
 
+// API_KEY & PRIVATE_KEY
+const RINKEBY_RPC_URL = process.env.RINKEBY_RPC_URL || "https://eth-rinkeby.alchemyapi.io/v2/your-api-key"
+const MATICMUM_RPC_URL = process.env.MATICMUM_RPC_URL || "https://rpc-mumbai.maticvigil.com"
+const MNEMONIC = process.env.MNEMONIC || "mnemonic"
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "Etherscan-API-key"
+// optional
+const PRIVATE_KEY = process.env.PRIVATE_KEY || "wallet private key"
+const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY || "COINMARKETCAP_API_KEY";
+
+/**
+ * @type import('hardhat/config').HardhatUserConfig
+ */
 module.exports = {
-    defaultNetwork: "hardhat",
-    networks: {
-        hardhat: {
-            chainId: 31337
-            // gasPrice: 130000000000,
-        }
-        // goerli: {
-        //     url: GOERLI_RPC_URL,
-        //     accounts: [PRIVATE_KEY],
-        //     chainId: 5,
-        //     blockConfirmations: 6
-        // }
-    },
     solidity: {
         compilers: [
             {
-                version: "0.8.7",
+                version: "0.8.17",
                 settings: {
                     optimizer: {
                         enabled: true,
@@ -40,9 +38,29 @@ module.exports = {
             }
         ]
     },
+    defaultNetwork: "hardhat",
+    networks: {
+        hardhat: {
+            chainId: 31337
+            // gasPrice: 130000000000,
+        },
+        maticmum: {
+            url: MATICMUM_RPC_URL,
+            //accounts: [`0x${ETH_PRIVATE_KEY}`],
+            accounts: {
+              mnemonic: MNEMONIC,
+            },
+        }
+    },
     etherscan: {
         apiKey: ETHERSCAN_API_KEY
         // customChains: [], // uncomment this line if you are getting a TypeError: customChains is not iterable
+    },
+    paths: {
+        sources: "./contracts",
+        tests: "./test",
+        cache: "./cache",
+        artifacts: "./artifacts"
     },
     gasReporter: {
         enabled: true,
@@ -58,6 +76,6 @@ module.exports = {
         }
     },
     mocha: {
-        timeout: 500000
+        timeout: 200000
     }
 }

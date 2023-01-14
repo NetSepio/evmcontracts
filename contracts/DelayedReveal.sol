@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.0;
-import "hardhat/console.sol";
+pragma solidity ^0.8.17;
 
 abstract contract DelayedReveal {
     /// @dev Mapping from tokenId of a batch of tokens => to delayed reveal data.
