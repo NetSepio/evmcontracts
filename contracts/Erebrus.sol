@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.7;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "./Subscription.sol";
+import "./Reveal.sol";
 import "hardhat/console.sol";
 
 import "./@rarible/royalties/contracts/RoyaltiesV2.sol";
@@ -11,26 +10,23 @@ import "./@rarible/royalties/contracts/impl/RoyaltiesV2Impl.sol";
 import "./@rarible/royalties/contracts/IERC2981.sol";
 import "./@rarible/royalties/contracts/LibRoyaltiesV2.sol";
 import "./@rarible/royalties/contracts/LibPart.sol";
-import "./DelayedReveal.sol";
 
-contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl, DelayedReveal {
+contract Erebrus is Reveal, RoyaltiesV2Impl {
+    event TokenURIRevealed(string revealedURI);
     mapping(address => bool) public allowList;
 
     using Counters for Counters.Counter;
 
     uint256 public immutable i_maxSupply = 2000; //2000
-    uint private immutable batchId = 1;
 
     uint256 private totalSupply = 0;
 
     uint balance;
-
-    bool private publicMintOpen = false;
     bool private allowListMintOpen = false;
     bool private pause = true;
     uint256 public publicprice;
     uint256 public allowListprice;
-    bool public revealed = false;
+
     string public baseURI;
     Counters.Counter private _tokenIdCounter;
 
@@ -51,10 +47,6 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl, DelayedReveal {
         allowListprice = _allowListprice;
     }
 
-    function revealStatus() public onlyOwner {
-        revealed = true;
-    }
-
     function Pause(bool _pause) external onlyOwner {
         pause = _pause;
     }
@@ -71,37 +63,35 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl, DelayedReveal {
     function tokenURI(
         uint256 _tokenId
     ) public view override returns (string memory) {
-        console.log("there token is %s", _tokenId);
         string memory batchUri = _getBaseURI(); //ERC721
         if (revealed) {
-            return string(abi.encodePacked(batchUri, "/", _tokenId));
+            return string(abi.encodePacked(batchUri, "/"));
         } else {
             return batchUri;
         }
     }
 
-    function setReveal(
-        string memory _URI,
-        string memory _key
-    ) public onlyOwner {
-        bytes memory hashURI = abi.encode(_URI);
-        bytes memory hashkey = abi.encode(_key);
-
-        bytes memory encryptedURI = encryptDecrypt(hashURI, hashkey);
-        _setEncryptedData(batchId, encryptedURI);
-    }
-
     function reveal(
         bytes memory _key
-    ) external returns (string memory revealedURI) {
+    ) public onlyOwner returns (string memory revealedURI) {
+        console.log("The function started");
         require(_canReveal(), "Not authorized");
-        require(revealed, "It is still not activated");
-
         revealedURI = getRevealURI(batchId, _key);
         _setBaseURI(revealedURI);
+
+        emit TokenURIRevealed(revealedURI);
     }
 
-    function _setBaseURI(string memory _URI) private {
+    function set_Password(
+        string memory _Pass
+    ) external returns (string memory) {
+        require(revealed, "It is still not activated");
+        bytes memory code = abi.encodePacked(_Pass);
+        string memory _URI = reveal(code);
+        return _URI;
+    }
+
+    function _setBaseURI(string memory _URI) private onlyOwner {
         baseURI = _URI;
     }
 
@@ -110,11 +100,7 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl, DelayedReveal {
     }
 
     // Modify the mint windows
-    function editMintWindows(
-        bool _publicMintOpen,
-        bool _allowListMintOpen
-    ) external onlyOwner {
-        publicMintOpen = _publicMintOpen;
+    function editMintWindows(bool _allowListMintOpen) external onlyOwner {
         allowListMintOpen = _allowListMintOpen;
     }
 
@@ -131,11 +117,11 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl, DelayedReveal {
 
     // Add Payment
     // Add limiting of supply
-    function publicMint() public payable whenNotpause {
-        require(publicMintOpen, "Public Mint Closed");
+    function publicMint() public payable whenNotpause returns (address) {
         require(!allowListMintOpen, "Still the minting can't be started");
-        require(msg.value == publicprice, "Not Enough Funds");
+        require(msg.value >= publicprice, "Not Enough Funds");
         internalMint();
+        return msg.sender;
     }
 
     function internalMint() internal {
@@ -146,36 +132,11 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl, DelayedReveal {
         _safeMint(msg.sender, tokenId);
     }
 
-    function withdraw() external onlyOwner whenNotpause {
-        // get the balance of the contract
-        uint256 balalnce = address(this).balance;
-        payable(msg.sender).transfer(balalnce);
-    }
-
     // Populate the Allow List
     function setAllowList(address[] calldata addresses) external onlyOwner {
         for (uint256 i = 0; i < addresses.length; i++) {
             allowList[addresses[i]] = true;
         }
-    }
-
-    /**Getter Functions **/
-
-    /// @dev Checks whether NFTs can be revealed in the given execution context.
-    function _canReveal() internal view virtual returns (bool) {
-        return msg.sender == owner();
-    }
-
-    function _getBaseURI() internal view returns (string memory) {
-        return baseURI;
-    }
-
-    function TotalMinted() external view onlyOwner returns (uint) {
-        return totalSupply;
-    }
-
-    function payout() public view onlyOwner returns (uint) {
-        return address(msg.sender).balance;
     }
 
     /** ROYALTIES **/
@@ -188,6 +149,24 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl, DelayedReveal {
         _royalties[0].value = _percentageBasisPoints;
         _royalties[0].account = _royaltiesReceipientAddress;
         _saveRoyalties(_tokenId, _royalties);
+    }
+
+    function withdraw() external onlyOwner whenNotpause {
+        // get the balance of the contract
+        (bool callSuccess, ) = payable(msg.sender).call{
+            value: address(this).balance
+        }("");
+        require(callSuccess, "Call failed");
+    }
+
+    /**Getter Functions **/
+
+    function _getBaseURI() internal view returns (string memory) {
+        return baseURI;
+    }
+
+    function TotalMinted() external view onlyOwner returns (uint) {
+        return totalSupply;
     }
 
     function supportsInterface(

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
+import "hardhat/console.sol";
 
-abstract contract DelayedReveal  {
+abstract contract DelayedReveal {
     /// @dev Mapping from tokenId of a batch of tokens => to delayed reveal data.
     mapping(uint256 => bytes) public encryptedData;
 
@@ -32,19 +33,18 @@ abstract contract DelayedReveal  {
         if (data.length == 0) {
             revert("Nothing to reveal");
         }
-
-        (bytes memory encryptedURI, bytes32 provenanceHash) = abi.decode(
+        /*(bytes memory encryptedURI, bytes32 provenanceHash) = abi.decode(
             data,
             (bytes, bytes32)
-        );
-
+        );*/
+        bytes memory encryptedURI = data;
         revealedURI = string(encryptDecrypt(encryptedURI, _key));
 
-        require(
+        /*require(
             keccak256(abi.encodePacked(revealedURI, _key, block.chainid)) ==
                 provenanceHash,
             "Incorrect key"
-        );
+        );*/
     }
 
     /**
@@ -60,7 +60,7 @@ abstract contract DelayedReveal  {
     function encryptDecrypt(
         bytes memory data,
         bytes memory key
-    ) public pure  returns (bytes memory result) {
+    ) public pure returns (bytes memory result) {
         // Store data length on stack for later use
         uint256 length = data.length;
 
@@ -93,14 +93,5 @@ abstract contract DelayedReveal  {
                 mstore(add(result, add(i, 32)), chunk)
             }
         }
-    }
-
-    /**
-     *  @notice         Returns whether the relvant batch of NFTs is subject to a delayed reveal.
-     *  @dev            Returns `true` if `_batchId`'s base URI is encrypted.
-     *  @param _batchId ID of a batch of NFTs.
-     */
-    function isEncryptedBatch(uint256 _batchId) public view returns (bool) {
-        return encryptedData[_batchId].length > 0;
     }
 }
