@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.7;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "./Subscription.sol";
+import "./Reveal.sol";
 import "hardhat/console.sol";
 
 import "./@rarible/royalties/contracts/RoyaltiesV2.sol";
@@ -12,24 +11,22 @@ import "./@rarible/royalties/contracts/IERC2981.sol";
 import "./@rarible/royalties/contracts/LibRoyaltiesV2.sol";
 import "./@rarible/royalties/contracts/LibPart.sol";
 
-contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
+contract Erebrus is Reveal, RoyaltiesV2Impl {
+    event TokenURIRevealed(string revealedURI);
     mapping(address => bool) public allowList;
 
     using Counters for Counters.Counter;
 
     uint256 public immutable i_maxSupply = 2000; //2000
 
-    string private revealURI;
     uint256 private totalSupply = 0;
 
     uint balance;
-
-    bool private publicMintOpen = false;
     bool private allowListMintOpen = false;
     bool private pause = true;
     uint256 public publicprice;
     uint256 public allowListprice;
-    bool public revealed = false;
+
     string public baseURI;
     Counters.Counter private _tokenIdCounter;
 
@@ -50,14 +47,6 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
         allowListprice = _allowListprice;
     }
 
-    function setRevealUri(string memory _uri) external onlyOwner {
-        revealURI = _uri;
-    }
-
-    function reveal() external onlyOwner {
-        revealed = true;
-    }
-
     function Pause(bool _pause) external onlyOwner {
         pause = _pause;
     }
@@ -72,14 +61,38 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
 
     //reveal the token URI by overriding the function
     function tokenURI(
-        uint256 tokenId
-    ) public view virtual override returns (string memory) {
-        require(tokenId <= totalSupply, "non existent token");
-        if (revealed != true) {
-            return super.tokenURI(tokenId);
+        uint256 _tokenId
+    ) public view override returns (string memory) {
+        string memory batchUri = _getBaseURI(); //ERC721
+        if (revealed) {
+            return string(abi.encodePacked(batchUri, "/"));
         } else {
-            return revealURI;
+            return batchUri;
         }
+    }
+
+    function reveal(
+        bytes memory _key
+    ) public onlyOwner returns (string memory revealedURI) {
+        console.log("The function started");
+        require(_canReveal(), "Not authorized");
+        revealedURI = getRevealURI(batchId, _key);
+        _setBaseURI(revealedURI);
+
+        emit TokenURIRevealed(revealedURI);
+    }
+
+    function set_Password(
+        string memory _Pass
+    ) external returns (string memory) {
+        require(revealed, "It is still not activated");
+        bytes memory code = abi.encodePacked(_Pass);
+        string memory _URI = reveal(code);
+        return _URI;
+    }
+
+    function _setBaseURI(string memory _URI) private onlyOwner {
+        baseURI = _URI;
     }
 
     function UpdateAllowList(address _user, bool _flag) external onlyOwner {
@@ -87,11 +100,7 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
     }
 
     // Modify the mint windows
-    function editMintWindows(
-        bool _publicMintOpen,
-        bool _allowListMintOpen
-    ) external onlyOwner {
-        publicMintOpen = _publicMintOpen;
+    function editMintWindows(bool _allowListMintOpen) external onlyOwner {
         allowListMintOpen = _allowListMintOpen;
     }
 
@@ -108,11 +117,11 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
 
     // Add Payment
     // Add limiting of supply
-    function publicMint() public payable whenNotpause {
-        require(publicMintOpen, "Public Mint Closed");
+    function publicMint() public payable whenNotpause returns (address) {
         require(!allowListMintOpen, "Still the minting can't be started");
-        require(msg.value == publicprice, "Not Enough Funds");
+        require(msg.value >= publicprice, "Not Enough Funds");
         internalMint();
+        return msg.sender;
     }
 
     function internalMint() internal {
@@ -123,31 +132,11 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
         _safeMint(msg.sender, tokenId);
     }
 
-    function withdraw() external onlyOwner whenNotpause {
-        // get the balance of the contract
-        uint256 balalnce = address(this).balance;
-        payable(msg.sender).transfer(balalnce);
-    }
-
     // Populate the Allow List
     function setAllowList(address[] calldata addresses) external onlyOwner {
         for (uint256 i = 0; i < addresses.length; i++) {
             allowList[addresses[i]] = true;
         }
-    }
-
-    /**Getter Functions **/
-
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
-    }
-
-    function TotalMinted() external view onlyOwner returns (uint) {
-        return totalSupply;
-    }
-
-    function payout() public view onlyOwner returns (uint) {
-        return address(msg.sender).balance;
     }
 
     /** ROYALTIES **/
@@ -160,6 +149,24 @@ contract Erebrus is Subscription, Ownable, RoyaltiesV2Impl {
         _royalties[0].value = _percentageBasisPoints;
         _royalties[0].account = _royaltiesReceipientAddress;
         _saveRoyalties(_tokenId, _royalties);
+    }
+
+    function withdraw() external onlyOwner whenNotpause {
+        // get the balance of the contract
+        (bool callSuccess, ) = payable(msg.sender).call{
+            value: address(this).balance
+        }("");
+        require(callSuccess, "Call failed");
+    }
+
+    /**Getter Functions **/
+
+    function _getBaseURI() internal view returns (string memory) {
+        return baseURI;
+    }
+
+    function TotalMinted() external view onlyOwner returns (uint) {
+        return totalSupply;
     }
 
     function supportsInterface(

@@ -2,16 +2,17 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IERC4907.sol";
+import "hardhat/console.sol";
 
-contract ERC4907 is ERC721, IERC4907 {
+contract ERC4907 is ERC721, IERC4907, Ownable {
     struct UserInfo {
         address user; // address of user role
         uint64 expires; // unix timestamp, user expires
     }
 
     mapping(uint256 => UserInfo) internal _users; // storing the data of the user who are renting the NFT
-
 
     constructor() ERC721("NFT", "NFT") {}
 
@@ -26,6 +27,7 @@ contract ERC4907 is ERC721, IERC4907 {
         address user,
         uint64 expires
     ) public virtual override {
+        console.log("the deployer is %s", msg.sender);
         require(
             _isApprovedOrOwner(msg.sender, tokenId),
             "ERC4907: transfer caller is not owner nor approved"
@@ -86,6 +88,4 @@ contract ERC4907 is ERC721, IERC4907 {
             emit UpdateUser(tokenId, address(0), 0);
         }
     }
-
-
 }
