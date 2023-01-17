@@ -1,25 +1,88 @@
-const { ethers, run, network } = require("hardhat")
-const { expect, assert, use } = require("chai")
+const { expect } = require("chai");
+const { ethers, run, network, assert, artifacts } = require("hardhat");
+const { BN, constants, expectEvent, expectRevert, makeInterfaceId } = require('@openzeppelin/test-helpers');
+
+const Erebrus = artifacts.require("Erebrus");
+
+let accounts;
+let erebrus;
+let admin;
+let operator;
+let whitelisted;
+let stranger;
+
+const INTERFACES = {
+	ERC165: [
+	  'supportsInterface(bytes4)',
+	],
+	AccessControl: [
+	  'hasRole(bytes32,address)',
+	  'getRoleAdmin(bytes32)',
+	  'grantRole(bytes32,address)',
+	  'revokeRole(bytes32,address)',
+	  'renounceRole(bytes32,address)'
+	],
+	AccessControlEnumerable: [
+	  'getRoleMember(bytes32,uint256)',
+	  'getRoleMemberCount(bytes32)'
+	],
+	ERC721: [
+	  'balanceOf(address)',
+	  'ownerOf(uint256)',
+	  'approve(address,uint256)',
+	  'getApproved(uint256)',
+	  'setApprovalForAll(address,bool)',
+	  'isApprovedForAll(address,address)',
+	  'transferFrom(address,address,uint256)',
+	  'safeTransferFrom(address,address,uint256)',
+	  'safeTransferFrom(address,address,uint256,bytes)',
+	],
+	ERC721Enumerable: [
+	  'totalSupply()',
+	  'tokenOfOwnerByIndex(address,uint256)',
+	  'tokenByIndex(uint256)',
+	],
+	ERC721Metadata: [
+	  'name()',
+	  'symbol()',
+	  'tokenURI(uint256)',
+	]
+};
+
+const EREBRUS_ADMIN_ROLE = ethers.utils.keccak256(Buffer.from('EREBRUS_ADMIN_ROLE'));
+const EREBRUS_OPERATOR_ROLE = ethers.utils.keccak256(Buffer.from('EREBRUS_OPERATOR_ROLE'));
+const EREBRUS_WHITELISTED_ROLE = ethers.utils.keccak256(Buffer.from('EREBRUS_WHITELISTED_ROLE'));
 
 describe("Erebrus ", function() {
     let pPrice = ethers.utils.parseEther("1")
     let aPrice = ethers.utils.parseEther("0.01")
-    let accounts
-    beforeEach(async () => {
-        accounts = await ethers.getSigners()
-        deployer = (await getNamedAccounts()).deployer
-        await deployments.fixture(["all"])
-        Erebrus = await ethers.getContract("Erebrus", deployer)
-    })
+
+    before(async function () {
+		accounts = await ethers.getSigners();
+		admin = accounts[0];
+		moderator = accounts[1];
+		voter = accounts[2];
+		stranger = accounts[3];
+		erebrus = await Erebrus.new("EREBRUS", "ERBS", "http://localhost:9080/artwork/", pPrice, aPrice, 10);
+	});
+
+    // beforeEach(async () => {
+    //     accounts = await ethers.getSigners()
+    //     deployer = (await getNamedAccounts()).deployer
+    //     await deployments.fixture(["all"])
+    //     Erebrus = await ethers.getContract("Erebrus", deployer)
+    // })
+
     describe("Constructor", function() {
         it("To check if the Constructor is working ", async () => {
             let URI = await Erebrus.baseURI()
             let allowlistingPrice = await Erebrus.allowListprice()
             let publicMintingPrice = await Erebrus.publicprice()
-            assert(URI.toString() == "https://github.com/")
+            assert(URI.toString() == "http://localhost:9080/artwork/")
             assert(publicMintingPrice.toString() == pPrice.toString())
             assert(allowlistingPrice.toString() == aPrice.toString())
         })
+
         it("Initializes the NFT Correctly.", async () => {
             const name = await Erebrus.name()
             const symbol = await Erebrus.symbol()
@@ -27,6 +90,7 @@ describe("Erebrus ", function() {
             assert.equal(symbol, "NFT")
         })
     })
+
     describe("Mint", () => {
         it("Public minting  & editMintWindows ", async function() {
             Erebrus.editMintWindows(false)

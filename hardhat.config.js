@@ -1,6 +1,7 @@
 require("@nomiclabs/hardhat-waffle")
 require("hardhat-gas-reporter")
 require("@nomiclabs/hardhat-etherscan")
+require('@nomiclabs/hardhat-truffle5');
 
 require("dotenv").config()
 require("solidity-coverage")
@@ -10,8 +11,8 @@ const fs = require('fs');
 require('dotenv').config()
 
 // API_KEY & PRIVATE_KEY
-const RINKEBY_RPC_URL = process.env.RINKEBY_RPC_URL || "https://eth-rinkeby.alchemyapi.io/v2/your-api-key"
 const MATICMUM_RPC_URL = process.env.MATICMUM_RPC_URL || "https://rpc-mumbai.maticvigil.com"
+const ETHEREUM_RPC_URL = process.env.ETHEREUM_RPC_URL || "https://ETH-RPC-URL"
 const MNEMONIC = process.env.MNEMONIC || "mnemonic"
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "Etherscan-API-key"
 // optional
@@ -48,7 +49,14 @@ module.exports = {
             url: MATICMUM_RPC_URL,
             //accounts: [`0x${ETH_PRIVATE_KEY}`],
             accounts: {
-              mnemonic: MNEMONIC,
+                mnemonic: MNEMONIC,
+            },
+        },
+        ethereum: {
+            networkId: 1,
+            url: ETHEREUM_RPC_URL,
+            accounts: {
+                mnemonic: MNEMONIC,
             },
         }
     },

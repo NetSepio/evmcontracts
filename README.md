@@ -16,10 +16,6 @@ similar to traditional NFTs in that they
   that they have a specific use beyond being a collectible 
   or piece of artwork.
 
-  
-
-
-
 ## Installation
 
 Install my-project with npm
@@ -44,6 +40,9 @@ To deploy this project run
   npm hardhat deploy
 
 ```
+
+Erebrus deployed to: `0x7bD706e9B6dCb8228f8a72b50a1b8E75D9f77d65`
+https://mumbai.polygonscan.com/address/0x7bD706e9B6dCb8228f8a72b50a1b8E75D9f77d65#code
 
 ## Testing
 To test the contracts , using hardhat 
