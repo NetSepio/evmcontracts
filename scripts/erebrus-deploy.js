@@ -1,68 +1,54 @@
-// const { network, ethers } = require("hardhat")
-// const { networkConfig, developmentChains } = require("../helper-hardhat-config")
-// const { verify } = require("../utils/verify")
-// require("dotenv").config()
-
-// module.exports = async ({ getNamedAccounts, deployments }) => {
-//     const { deploy, log } = deployments;
-//     const { deployer } = await getNamedAccounts();
-//     const publicSalePrice = ethers.utils.parseEther(".1");
-//     const allowListSalePrice = ethers.utils.parseEther("0.05");
-//     log("----------------------------------------------------")
-//     log("Deploying Erebrus and waiting for confirmations...")
-//     const Erebrus = await deploy("Erebrus", {
-//         from: deployer,
-//         args: [
-//             "EREBRUS",
-//             "ERBS",
-//             "http://localhost:9080/artwork/",
-//             publicSalePrice,
-//             allowListSalePrice,
-//             10
-//         ],
-//         log: true,
-//         waitConfirmations: network.config.blockConfirmations || 1
-//     })
-//     log(`Erebrus NFT Collection deployed at ${Erebrus.address}`)
-
-//     if (
-//         !developmentChains.includes(network.name) &&
-//         process.env.ETHERSCAN_API_KEY
-//     ) {
-//         await verify(Erebrus.address, ["EREBRUS", "ERBS", "http://localhost:9080/artwork/", publicSalePrice, allowListSalePrice, 10])
-//     }
-// }
-
-// module.exports.tags = ["all"]
-
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// When running the script with `npx hardhat run <script>` you'll find the Hardhat
-// Runtime Environment's members available in the global scope.
-const hre = require("hardhat");
-
+// imports
+const { ethers, run, network } = require("hardhat")
+// async main
 async function main() {
-	// Hardhat always runs the compile task when running scripts with its command
-	// line interface.
-	//
-	// If this script is run directly using `node` you may want to call compile
-	// manually to make sure everything is compiled
-	// await hre.run('compile');
-
-	// We get the contract to deploy
-	const Erebrus = await hre.ethers.getContractFactory("Erebrus");
-    const publicSalePrice = hre.ethers.utils.parseEther(".1");
-    const allowListSalePrice = hre.ethers.utils.parseEther("0.05");
-	const erebrus = await Erebrus.deploy("EREBRUS", "ERBS", "http://localhost:9080/artwork/", publicSalePrice, allowListSalePrice, 10);
-	console.log("Erebrus deployed to:", erebrus.address);
+    const accounts = await ethers.getSigners()
+    const deplpoyer = accounts[0].address
+    let pPrice = ethers.utils.parseEther("1")
+    let aPrice = ethers.utils.parseEther("0.01")
+    const ErebrusNftFactory = await ethers.getContractFactory("Erebrus")
+    console.log("Deploying contract...")
+    const Erebrus_Nft = await ErebrusNftFactory.deploy(
+        "EREBRUS",
+        "ERBS",
+        "http://localhost:9080/artwork/",
+        pPrice,
+        aPrice,
+        100
+    )
+    await Erebrus_Nft.deployed()
+    console.log(`Deployed contract to: ${Erebrus_Nft.address}`)
+    if (
+        (network.config.chainId === 5 && process.env.ETHERSCAN_API_KEY) ||
+        (network.config.chainId == 80001 && process.env.POLYGONSCAN_API_KEY)
+    ) {
+        console.log("Waiting for block confirmations...")
+        await Erebrus_Nft.deployTransaction.wait(6)
+        await verify(Erebrus_Nft.address, [])
+    }
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
+// async function verify(contractAddress, args) {
+const verify = async (contractAddress, args) => {
+    console.log("Verifying contract...")
+    try {
+        await run("verify:verify", {
+            address: contractAddress,
+            constructorArguments: args
+        })
+    } catch (e) {
+        if (e.message.toLowerCase().includes("already verified")) {
+            console.log("Already Verified!")
+        } else {
+            console.log(e)
+        }
+    }
+}
+
+// main
 main()
-	.then(() => process.exit(0))
-	.catch((error) => {
-		console.error(error);
-		process.exit(1);
-	});
+    .then(() => process.exit(0))
+    .catch(error => {
+        console.error(error)
+        process.exit(1)
+    })
