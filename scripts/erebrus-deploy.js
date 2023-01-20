@@ -24,7 +24,14 @@ async function main() {
     ) {
         console.log("Waiting for block confirmations...")
         await Erebrus_Nft.deployTransaction.wait(6)
-        await verify(Erebrus_Nft.address, [])
+        await verify(Erebrus_Nft.address, [
+            "EREBRUS",
+            "ERBS",
+            "http://localhost:9080/artwork/",
+            pPrice,
+            aPrice,
+            100
+        ])
     }
 }
 

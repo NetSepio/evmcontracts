@@ -14,8 +14,8 @@ tokens on a one-to-one basis, but they differ in
 that they have a specific use beyond being a collectible 
 or piece of artwork.
 
-Erebrus deployed to: `0x7bD706e9B6dCb8228f8a72b50a1b8E75D9f77d65`
-https://mumbai.polygonscan.com/address/0x7bD706e9B6dCb8228f8a72b50a1b8E75D9f77d65#code
+Erebrus deployed to: `0xB00E5Bf89d4d9CB3a03071D23d8bdf2Df40Cc33C`
+https://mumbai.polygonscan.com/address/0xB00E5Bf89d4d9CB3a03071D23d8bdf2Df40Cc33C#code
 
 
 # Getting Started
