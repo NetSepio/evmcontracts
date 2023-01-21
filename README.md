@@ -14,8 +14,8 @@ tokens on a one-to-one basis, but they differ in
 that they have a specific use beyond being a collectible 
 or piece of artwork.
 
-Erebrus deployed to: `0xB00E5Bf89d4d9CB3a03071D23d8bdf2Df40Cc33C`
-https://mumbai.polygonscan.com/address/0xB00E5Bf89d4d9CB3a03071D23d8bdf2Df40Cc33C#code
+Erebrus deployed to: `0x900eeDD8F96c1623Fe9125531ea3a90e1318f9bB`
+https://mumbai.polygonscan.com/address/0x900eeDD8F96c1623Fe9125531ea3a90e1318f9bB#code
 
 
 # Getting Started
@@ -109,17 +109,13 @@ Head over to [faucets.chain.link](https://faucets.chain.link/) and get some tesn
 
 ```
 =======
-npx hardhat run scripts/deploy.js --network goerli
+npx hardhat run scripts/deploy.js --network maticmum
 >>>>>>> (goerli update)
 ```
 
 ### Verify on etherscan
 
 If you deploy to a testnet or mainnet, you can verify it if you get an [API Key](https://etherscan.io/myapikey) from Etherscan and set it as an environment variable named `ETHERSCAN_API_KEY`. You can pop it into your `.env` file as seen in the `.env.example`.
-
-<<<<<<< HEAD
-In it's current state, if you have your api key set, it will auto verify rinkeby contracts!
-=======
 
 
 However, you can manual verify with:
