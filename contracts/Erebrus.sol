@@ -54,8 +54,10 @@ contract Erebrus is
     mapping(uint256 => UserInfo) internal _users; // storing the data of the user who are renting the NFT
     mapping(address => uint) public nftMints;
 
-    event ClientConfigUpdated(uint tokenId, string data, string newData);
     event CollectionURIRevealed(string revealedURI);
+    event NFTMinted(uint tokenId, address indexed owner);
+    event NFTBurnt(uint tokenId, address indexed ownerOrApproved);
+    event ClientConfigUpdated(uint tokenId, string data, string newData);
 
     constructor(
         string memory _name,
@@ -137,6 +139,7 @@ contract Erebrus is
             tokenId = _tokenIdCounter.current();
             require(tokenId <= maxSupply, "Erebrus: NFT Collection Sold Out!");
             _safeMint(_msgSender(), tokenId);
+            emit NFTMinted(tokenId, _msgSender());
         }
     }
 
@@ -150,6 +153,7 @@ contract Erebrus is
     function burnNFT(uint256 tokenId) public {
         require(_isApprovedOrOwner(_msgSender(), tokenId), "Erebrus: caller is not token owner or approved");
         _burn(tokenId);
+        emit NFTBurnt(tokenId, _msgSender());
         _resetTokenRoyalty(tokenId);
     }
 
@@ -176,6 +180,7 @@ contract Erebrus is
         if (revealed) {
             _setBaseURI(_revealURI);
             revealed = true;
+            emit CollectionURIRevealed(_revealURI);
         }
     }
 

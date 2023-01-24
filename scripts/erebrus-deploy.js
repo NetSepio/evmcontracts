@@ -8,26 +8,26 @@ async function main() {
     let aPrice = ethers.utils.parseEther("0.01")
     const ErebrusNftFactory = await ethers.getContractFactory("Erebrus")
     console.log("Deploying contract...")
-    const Erebrus_Nft = await ErebrusNftFactory.deploy(
+    const Erebrus = await ErebrusNftFactory.deploy(
         "EREBRUS",
         "ERBS",
-        "http://localhost:9080/artwork/",
+        "http://localhost:9080/artwork",
         pPrice,
         aPrice,
         100
     )
-    await Erebrus_Nft.deployed()
-    console.log(`Deployed contract to: ${Erebrus_Nft.address}`)
+    await Erebrus.deployed()
+    console.log(`Deployed contract to: ${Erebrus.address}`)
     if (
         (network.config.chainId === 5 && process.env.ETHERSCAN_API_KEY) ||
         (network.config.chainId == 80001 && process.env.POLYGONSCAN_API_KEY)
     ) {
         console.log("Waiting for block confirmations...")
-        await Erebrus_Nft.deployTransaction.wait(6)
-        await verify(Erebrus_Nft.address, [
+        await Erebrus.deployTransaction.wait(6)
+        await verify(Erebrus.address, [
             "EREBRUS",
             "ERBS",
-            "http://localhost:9080/artwork/",
+            "http://localhost:9080/artwork",
             pPrice,
             aPrice,
             100
