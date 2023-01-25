@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "hardhat/console.sol";
 
 contract Erebrus is
     Context,
@@ -21,9 +22,12 @@ contract Erebrus is
     // Set Constants for Interface ID and Roles
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
-    bytes32 public constant EREBRUS_ADMIN_ROLE = keccak256("EREBRUS_ADMIN_ROLE");
-    bytes32 public constant EREBRUS_OPERATOR_ROLE = keccak256("EREBRUS_OPERATOR_ROLE");
-    bytes32 public constant EREBRUS_WHITELISTED_ROLE = keccak256("EREBRUS_WHITELISTED_ROLE");
+    bytes32 public constant EREBRUS_ADMIN_ROLE =
+        keccak256("EREBRUS_ADMIN_ROLE");
+    bytes32 public constant EREBRUS_OPERATOR_ROLE =
+        keccak256("EREBRUS_OPERATOR_ROLE");
+    bytes32 public constant EREBRUS_WHITELISTED_ROLE =
+        keccak256("EREBRUS_WHITELISTED_ROLE");
 
     uint256 public immutable maxSupply; //set in the constructor
 
@@ -82,7 +86,10 @@ contract Erebrus is
         _setDefaultRoyalty(_msgSender(), 500);
     }
 
-    function setPrice(uint256 _publicSalePrice, uint256 _allowlistprice) external onlyRole(EREBRUS_ADMIN_ROLE) {
+    function setPrice(
+        uint256 _publicSalePrice,
+        uint256 _allowlistprice
+    ) external onlyRole(EREBRUS_ADMIN_ROLE) {
         publicSalePrice = _publicSalePrice;
         allowListSalePrice = _allowlistprice;
     }
@@ -96,7 +103,9 @@ contract Erebrus is
     }
 
     // Reveal the token URI by overriding the function
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    function tokenURI(
+        uint256 tokenId
+    ) public view override returns (string memory) {
         string memory _tokenURI = _baseURI(); //ERC721
         if (revealed) {
             return string(abi.encodePacked(_tokenURI, "/", tokenId.toString()));
@@ -106,17 +115,32 @@ contract Erebrus is
     }
 
     // Modify the mint windows
-    function editMintWindows(bool _allowListMintOpen) external onlyRole(EREBRUS_ADMIN_ROLE) {
+    function editMintWindows(
+        bool _allowListMintOpen
+    ) external onlyRole(EREBRUS_ADMIN_ROLE) {
         allowListMintOpen = _allowListMintOpen;
     }
 
-    function mintNFT() external payable whenNotpaused {
+    function mintNFT(
+        address royaltyReceiver,
+        uint96 feeNumerator,
+        bool royaltyStatus
+    ) external payable whenNotpaused {
         uint256 tokenId = _tokenIdCounter.current();
         uint mint;
         if (allowListMintOpen) {
-            require(hasRole(EREBRUS_WHITELISTED_ROLE, _msgSender()), "You are not on the allow list");
-            require(msg.value >= allowListSalePrice, "Erebrus: Not Enough Funds");
-            require(tokenId < (maxSupply * 30) / 100, "Erebrus: Supply has exceeded");
+            require(
+                hasRole(EREBRUS_WHITELISTED_ROLE, _msgSender()),
+                "You are not on the allow list"
+            );
+            require(
+                msg.value >= allowListSalePrice,
+                "Erebrus: Not Enough Funds"
+            );
+            require(
+                tokenId < (maxSupply * 30) / 100,
+                "Erebrus: Supply has exceeded"
+            );
 
             uint requestQty = msg.value / allowListSalePrice;
 
@@ -126,9 +150,11 @@ contract Erebrus is
             // TODO: Check this logic
             if (nftMints[_msgSender()] == 0) {
                 mint = requestQty;
+                nftMints[_msgSender()] += requestQty;
             } else {
                 require(requestQty < 2, "Erebrus: Mint Only 2 per wallet");
                 mint = requestQty;
+                nftMints[_msgSender()] += 1;
             }
         } else {
             require(msg.value >= publicSalePrice, "Erebrus: Not Enough Funds");
@@ -139,6 +165,8 @@ contract Erebrus is
             tokenId = _tokenIdCounter.current();
             require(tokenId <= maxSupply, "Erebrus: NFT Collection Sold Out!");
             _safeMint(_msgSender(), tokenId);
+            if (royaltyStatus)
+                _setTokenRoyalty(tokenId, royaltyReceiver, feeNumerator);
             emit NFTMinted(tokenId, _msgSender());
         }
     }
@@ -151,7 +179,10 @@ contract Erebrus is
      * - The caller must own `tokenId` or be an approved operator.
      */
     function burnNFT(uint256 tokenId) public {
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "Erebrus: caller is not token owner or approved");
+        require(
+            _isApprovedOrOwner(_msgSender(), tokenId),
+            "Erebrus: caller is not token owner or approved"
+        );
         _burn(tokenId);
         emit NFTBurnt(tokenId, _msgSender());
         _resetTokenRoyalty(tokenId);
@@ -176,19 +207,21 @@ contract Erebrus is
      *
      * - The caller must have Admin Role.
      */
-    function revealCollection(string memory _revealURI) external onlyRole(EREBRUS_ADMIN_ROLE) {
-        if (revealed) {
-            _setBaseURI(_revealURI);
-            revealed = true;
-            emit CollectionURIRevealed(_revealURI);
-        }
+    function revealCollection(
+        string memory _revealURI
+    ) external onlyRole(EREBRUS_ADMIN_ROLE) {
+        _setBaseURI(_revealURI);
+        emit CollectionURIRevealed(_revealURI);
     }
 
     /******************************************************* */
 
     /*****  DATA TOKEN *******/
 
-    function writeClientConfig(uint256 tokenId, string memory newData) external onlyRole(EREBRUS_ADMIN_ROLE) {
+    function writeClientConfig(
+        uint256 tokenId,
+        string memory newData
+    ) external onlyRole(EREBRUS_ADMIN_ROLE) {
         require(_exists(tokenId), "Erebrus: Non-Existent Token");
         clientConfig[tokenId] = newData;
         emit ClientConfigUpdated(tokenId, clientConfig[tokenId], newData);
@@ -208,7 +241,10 @@ contract Erebrus is
         address user,
         uint64 expires
     ) public virtual override {
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "Erebrus: Caller is not owner nor approved");
+        require(
+            _isApprovedOrOwner(_msgSender(), tokenId),
+            "Erebrus: Caller is not owner nor approved"
+        );
         UserInfo storage info = _users[tokenId];
         info.user = user;
         info.expires = expires;
@@ -257,7 +293,7 @@ contract Erebrus is
         return baseURI;
     }
 
-     function _beforeTokenTransfer(
+    function _beforeTokenTransfer(
         address from,
         address to,
         uint256 tokenId,

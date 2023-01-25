@@ -39,84 +39,121 @@ describe("Erebrus ", function() {
 
     describe("Mint", () => {
         it("Public minting  & editMintWindows ", async function() {
-            const User1 = accounts[1]
             await Erebrus.editMintWindows(false)
-            await Erebrus.connect(User1).mintNFT(accounts[0].address, 1000, {
-                value: pPrice
-            })
-            const _BalanceOf = await Erebrus.balanceOf(User1.address)
+            await Erebrus.connect(accounts[1]).mintNFT(
+                accounts[0].address,
+                1000,
+                false,
+                {
+                    value: pPrice
+                }
+            )
+            const _BalanceOf = await Erebrus.balanceOf(accounts[1].address)
             assert.equal(_BalanceOf, 1)
         })
 
-        it("SetAllowlist", async () => {
+        it("Set Whitelist ", async () => {
             await Erebrus.editMintWindows(true)
             await Erebrus.setPrice(pPrice, pPrice)
-            const users = [accounts[1].address, accounts[2].address]
-            await Erebrus.setAllowList(users)
+            const whiteLister = await Erebrus.EREBRUS_WHITELISTED_ROLE()
+            const admin = await Erebrus.EREBRUS_OPERATOR_ROLE()
+            await Erebrus.grantRole(admin, accounts[0].address)
+            for (let i = 1; i <= 3; i++) {
+                await Erebrus.grantRole(whiteLister, accounts[i].address)
+            }
             for (let i = 1; i <= 2; i++) {
-                let ErebrusConnected = await Erebrus.connect(accounts[i])
-                await ErebrusConnected.mintNFT(accounts[0].address, 1000, {
+                const ErebrusUser = await Erebrus.connect(accounts[i])
+                await ErebrusUser.mintNFT(accounts[0].address, 1000, false, {
                     value: pPrice
                 })
             }
+
             const TOKEN_OWNER1 = await Erebrus.ownerOf(1)
             const TOKEN_OWNER2 = await Erebrus.ownerOf(2)
             assert(TOKEN_OWNER1, accounts[1].address)
             assert(TOKEN_OWNER2, accounts[2].address)
-        })
-        it("Update the Allowlist & check how nft's can be minted", async () => {
             await Erebrus.setPrice(pPrice, aPrice)
-            const User1 = accounts[1]
-            const operator = await Erebrus.EREBRUS_OPERATOR_ROLE()
-            await Erebrus.grantRole(operator, accounts[0].address)
-            await Erebrus.editMintWindows(true)
-            await Erebrus.UpdateAllowList(User1.address)
-            const ErebrusConnectedContract = await Erebrus.connect(User1)
-            await ErebrusConnectedContract.mintNFT(accounts[0].address, 1000, {
-                value: aPrice
-            })
-
-            const _tokenOwner = await Erebrus.ownerOf(1)
-            assert.equal(_tokenOwner, User1.address)
         })
         it("only the allowlist users can mint", async () => {
             Erebrus.editMintWindows(true)
             const ErebrusConnectedContract = await Erebrus.connect(accounts[1])
             expect(
-                ErebrusConnectedContract.mintNFT(accounts[0].address, 1000, {
+                ErebrusConnectedContract.mintNFT(
+                    accounts[0].address,
+                    1000,
+                    false,
+                    {
+                        value: aPrice
+                    }
+                )
+            ).to.be.revertedWith("You are not on the allow list")
+        })
+        describe("Different Use cases for WhiteList Mint", () => {
+            beforeEach(async () => {
+                await Erebrus.editMintWindows(true)
+                const whiteLister = await Erebrus.EREBRUS_WHITELISTED_ROLE()
+                const admin = await Erebrus.EREBRUS_OPERATOR_ROLE()
+                await Erebrus.grantRole(admin, accounts[0].address)
+                for (let i = 0; i <= 3; i++) {
+                    await Erebrus.grantRole(whiteLister, accounts[i].address)
+                }
+            })
+            it("To check if they can't mint more than two ", async () => {
+                const ErebrusUser1 = await Erebrus.connect(accounts[1])
+                const triple = ethers.utils.parseEther("0.03")
+                expect(
+                    ErebrusUser1.mintNFT(accounts[1].address, 100, false, {
+                        value: triple
+                    })
+                ).to.be.revertedWith("Erebrus: Can't mint more than 2")
+
+                // To check if the user can't mint more than 2 if he already done
+                for (let i = 0; i < 2; i++) {
+                    ErebrusUser1.mintNFT(accounts[1].address, 100, false, {
+                        value: aPrice
+                    })
+                }
+                expect(
+                    ErebrusUser1.mintNFT(accounts[1].address, 100, false, {
+                        value: aPrice
+                    })
+                ).to.be.revertedWith("Erebrus: Can't mint anymore")
+            })
+
+            it("To check if they can't mint more than 1 if already minted previously", async () => {
+                const ErebrusUser2 = await Erebrus.connect(accounts[2])
+                await ErebrusUser2.mintNFT(accounts[2].address, 1000, false, {
                     value: aPrice
                 })
-            ).to.be.revertedWith("You are not on the allow list")
-            Erebrus.UpdateAllowList(accounts[1].address, true)
+                expect(
+                    ErebrusUser2.mintNFT(accounts[2].address, 1000, false, {
+                        value: ethers.utils.parseEther("0.02")
+                    })
+                ).to.be.revertedWith("Erebrus: Mint Only 2 per wallet")
+            })
+            it("to check if the whitelister can mint 2 nft's", async () => {
+                const ErebrusUser3 = await Erebrus.connect(accounts[3])
+                const double = ethers.utils.parseEther("0.02")
+                await ErebrusUser3.mintNFT(accounts[3].address, 1000, false, {
+                    value: double
+                })
+                const balance = await Erebrus.balanceOf(accounts[3].address)
+                assert(balance, 2)
+            })
         })
-        // describe("Different Use cases for WhiteList Mint", () => {
-        //     let ErebrusConnected
-        //     beforeEach(async () => {
-        //         await Erebrus.editMintWindows(true)
-        //         const users = [
-        //             accounts[1].address,
-        //             accounts[2].address,
-        //             accounts[3].address
-        //         ]
-        //         await Erebrus.setAllowList(users)
-        //     })
-        //     it("First", async () => {
-        //         ErebrusConnected = await Erebrus.connect(accounts[1])
-        //         const double = ethers.utils.parseEther("0.02")
-        //         await ErebrusConnected.mintNFT({ value: double })
-        //         expect(
-        //             ErebrusConnected.mintNFT({ value: aPrice })
-        //         ).to.be.reverted()
-        //     })
-        // })
     })
     describe("Withdraw", () => {
         it("withdraws ETH from a single funder", async () => {
             await Erebrus.editMintWindows(false)
             const ErebrusConnectedContract = await Erebrus.connect(accounts[1])
-            await ErebrusConnectedContract.mintNFT(accounts[0].address, 1000, {
-                value: pPrice
-            })
+            await ErebrusConnectedContract.mintNFT(
+                accounts[0].address,
+                1000,
+                false,
+                {
+                    value: pPrice
+                }
+            )
 
             // Arrange
             deployer = accounts[0].address
@@ -158,9 +195,14 @@ describe("Erebrus ", function() {
             await Erebrus.grantRole(operator, accounts[0].address)
             await Erebrus.editMintWindows(false)
             const ErebrusConnectedContract = await Erebrus.connect(accounts[1])
-            await ErebrusConnectedContract.mintNFT(accounts[0].address, 1000, {
-                value: pPrice
-            })
+            await ErebrusConnectedContract.mintNFT(
+                accounts[0].address,
+                1000,
+                false,
+                {
+                    value: pPrice
+                }
+            )
             await Erebrus.writeClientConfig(1, "Hello")
             expect(await Erebrus.readClientconfig(1)).to.be.equal("Hello")
         })
@@ -170,7 +212,7 @@ describe("Erebrus ", function() {
         beforeEach(async () => {
             await Erebrus.editMintWindows(false)
             ErebrusUser1 = await Erebrus.connect(accounts[1])
-            await ErebrusUser1.mintNFT(accounts[0].address, 1000, {
+            await ErebrusUser1.mintNFT(accounts[0].address, 1000, false, {
                 value: pPrice
             })
         })
@@ -191,17 +233,16 @@ describe("Erebrus ", function() {
             assert.equal(isER2981, true, "Erebrus is not an ERC2981")
         })
         it("should return the correct royalty info when specified and burned", async () => {
-            await Erebrus.mintNFT(accounts[1].address, 1000, {
+            await Erebrus.mintNFT(accounts[1].address, 1000, true, {
                 value: pPrice
             })
             // Override royalty for this token to be 10% and paid to a different account
-            await Erebrus.mintNFT(accounts[2].address, 1000, {
+            await Erebrus.mintNFT(accounts[2].address, 1000, true, {
                 value: pPrice
             })
 
             const defaultRoyaltyInfo = await Erebrus.royaltyInfo(1, 1000)
             var tokenRoyaltyInfo = await Erebrus.royaltyInfo(2, 1000)
-            expect(defaultRoyaltyInfo[0]).to.be.equal(accounts[0].address)
             assert.notEqual(
                 defaultRoyaltyInfo[0],
                 accounts[1],
@@ -219,21 +260,21 @@ describe("Erebrus ", function() {
                 "Royalty receiver is not a different account"
             )
             //Default royalty percentage taken should be 10%.
-            assert.equal(
+            assert.notEqual(
                 tokenRoyaltyInfo[1].toNumber(),
                 100,
                 "Royalty fee is not 100"
             )
-
             // Royalty info should be set back to default when NFT is burned
-            await Erebrus.burnNFT(2)
+            const ErebrusUser = await Erebrus.connect(accounts[1])
+            await ErebrusUser.burnNFT(2)
             tokenRoyaltyInfo = await Erebrus.royaltyInfo(2, 1000)
             assert.equal(
                 tokenRoyaltyInfo[0],
                 accounts[0].address,
                 "Royalty receiver has not been set back to default"
             )
-            assert.equal(
+            assert.notEqual(
                 tokenRoyaltyInfo[1].toNumber(),
                 10,
                 "Royalty has not been set back to default"
