@@ -114,6 +114,7 @@ contract Erebrus is
         uint256 tokenId = _tokenIdCounter.current();
         uint mint;
         if (allowListMintOpen) {
+            // Allow List Mint
             require(hasRole(EREBRUS_WHITELISTED_ROLE, _msgSender()), "You are not on the allow list");
             require(msg.value >= allowListSalePrice, "Erebrus: Not Enough Funds");
             require(tokenId < (maxSupply * 30) / 100, "Erebrus: Supply has exceeded");
@@ -123,16 +124,19 @@ contract Erebrus is
             require(requestQty <= 2, "Erebrus: Can't mint more than 2");
             require(nftMints[_msgSender()] < 2, "Erebrus: Can't mint anymore");
 
-            // TODO: Check this logic
             if (nftMints[_msgSender()] == 0) {
                 mint = requestQty;
             } else {
                 require(requestQty < 2, "Erebrus: Mint Only 2 per wallet");
                 mint = requestQty;
             }
+            nftMints[_msgSender()] += requestQty;
         } else {
+            // Public Mint
             require(msg.value >= publicSalePrice, "Erebrus: Not Enough Funds");
+            require(nftMints[_msgSender()] < 1, "Erebrus: Can't mint anymore");
             mint = 1;
+            nftMints[_msgSender()] += 1;
         }
         for (uint i = 0; i < mint; i++) {
             _tokenIdCounter.increment();
