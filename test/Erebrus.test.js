@@ -180,7 +180,7 @@ describe("Erebrus ", function() {
     describe("Client Config", () => {
         it("Reading & writing the Client Config ", async () => {
             await Erebrus.writeClientConfig(1, "Hello")
-            expect(await Erebrus.readClientconfig(1)).to.be.equal("Hello")
+            expect(await Erebrus.readClientConfig(1)).to.be.equal("Hello")
         })
     })
     describe("Rental ", () => {
