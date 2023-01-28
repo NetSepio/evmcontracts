@@ -135,10 +135,11 @@ contract Erebrus is
                 msg.value >= allowListSalePrice,
                 "Erebrus: Not Enough Funds"
             );
-            require(requestQty <= 2, "Erebrus: Can't mint more than 2");
+
             // TODO: Check Edge Case for when only 1 token remains
-            uint remaining = maxSupply - totalSupply();
+            uint remaining = (maxSupply * 30) / 100 - totalSupply();
             uint requestQty = msg.value / allowListSalePrice;
+            require(requestQty <= 2, "Erebrus: Can't mint more than 2");
             require(
                 requestQty <= remaining,
                 "Ererbrus : Not enough Nft to mint"
