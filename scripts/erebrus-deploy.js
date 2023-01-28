@@ -4,14 +4,14 @@ const { ethers, run, network } = require("hardhat")
 async function main() {
     const accounts = await ethers.getSigners()
     const deplpoyer = accounts[0].address
-    let pPrice = ethers.utils.parseEther("1")
-    let aPrice = ethers.utils.parseEther("0.01")
+    let pPrice = ethers.utils.parseEther("0.1")
+    let aPrice = ethers.utils.parseEther("0.05")
     const ErebrusNftFactory = await ethers.getContractFactory("Erebrus")
     console.log("Deploying contract...")
     const Erebrus = await ErebrusNftFactory.deploy(
         "EREBRUS",
         "ERBS",
-        "http://localhost:9080/artwork",
+        "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
         pPrice,
         aPrice,
         100
@@ -27,7 +27,7 @@ async function main() {
         await verify(Erebrus.address, [
             "EREBRUS",
             "ERBS",
-            "http://localhost:9080/artwork",
+            "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
             pPrice,
             aPrice,
             100

@@ -1,22 +1,9 @@
+# EREBRUS
+We are trying to implement a Utility NFT where subscription, royalty for the creator, and rental facilities are available, the NFT will be disclosed on the closing date, and the wallet address will be whitelisted prior to that. 
+Utility non-fungible tokens (NFTs) are digital assets that represent a right or access to a service or product. They are similar to traditional NFTs in that they are unique and cannot be exchanged for other tokens on a one-to-one basis, but they differ in that they have a specific use beyond being a collectible or piece of artwork.
 
-
-# EREBRUS NFT
-We are trying to implement a Utility NFT where subscription, royalty for the creator, 
-and rental facilities are available, 
-the NFT will be disclosed on the closing date, 
-and the wallet address will be whitelisted prior to that. 
-Be prepared for these changes.Utility non-fungible tokens (NFTs) are 
-digital assets that represent a right or 
-access to a service or product. They are 
-similar to traditional NFTs in that they
-are unique and cannot be exchanged for other
-tokens on a one-to-one basis, but they differ in 
-that they have a specific use beyond being a collectible 
-or piece of artwork.
-
-Erebrus deployed to: `0x900eeDD8F96c1623Fe9125531ea3a90e1318f9bB`
-https://mumbai.polygonscan.com/address/0x900eeDD8F96c1623Fe9125531ea3a90e1318f9bB#code
-
+Erebrus deployed to: `0xA40166F872CC568b34410672eF3667cbc1865340`
+https://mumbai.polygonscan.com/address/0xA40166F872CC568b34410672eF3667cbc1865340#code
 
 # Getting Started
 

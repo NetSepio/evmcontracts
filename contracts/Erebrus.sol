@@ -33,9 +33,9 @@ contract Erebrus is
 
     Counters.Counter private _tokenIdCounter;
 
-    bool public revealed = false;
-    bool private allowListMintOpen = false;
-    bool private mintPaused = true;
+    bool public collectionRevealed = false;
+    bool public mintPaused = true;
+    bool public allowListMintOpen = false;
     uint256 public publicSalePrice;
     uint256 public allowListSalePrice;
     string public baseURI;
@@ -46,7 +46,7 @@ contract Erebrus is
     }
 
     modifier whenNotpaused() {
-        require(mintPaused == true, "The minting is paused");
+        require(mintPaused == false, "Erebrus: NFT Minting Paused");
         _;
     }
 
@@ -97,7 +97,7 @@ contract Erebrus is
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         string memory _tokenURI = _baseURI(); //ERC721
-        if (revealed) {
+        if (collectionRevealed) {
             return string(abi.encodePacked(_tokenURI, "/", tokenId.toString()));
         } else {
             return _tokenURI;
@@ -110,23 +110,25 @@ contract Erebrus is
     }
 
     function mintNFT() external payable whenNotpaused {
-        require(totalSupply() <= maxSupply, "Erebrus: NFT Collection Sold Out!");
+        require(totalSupply() <= maxSupply, "Erebrus: Collection Sold Out!");
         uint mint;
         if (allowListMintOpen) {
             // Allow List Mint
-            require(hasRole(EREBRUS_ALLOWLISTED_ROLE, _msgSender()), "Erebrus: You are not on the allow list");
+            require(hasRole(EREBRUS_ALLOWLISTED_ROLE, _msgSender()), "Erebrus: Only For Allowlisted");
             require(msg.value >= allowListSalePrice, "Erebrus: Not Enough Funds");
-            // TODO: Check Edge Case for when only 1 token remains
-            require(totalSupply() <= (maxSupply * 30) / 100, "Erebrus: Max Supply has exceeded");
+            // Check Edge Case for when only 1 token remains
+            uint availability = (maxSupply * 30) / 100 - totalSupply();
             uint requestQty = msg.value / allowListSalePrice;
-
-            require(requestQty <= 2, "Erebrus: Can't mint more than 2");
-            require(nftMints[_msgSender()] < 2, "Erebrus: Can't mint anymore");
+            
+            require(totalSupply() <= (maxSupply * 30) / 100, "Erebrus: Max Supply Exceeded");
+            require(requestQty <= 2, "Erebrus: Can't Mint More Than 2");
+            require(requestQty <= availability, "Ererbrus : NFT Qty Unavailable");
+            require(nftMints[_msgSender()] < 2, "Erebrus: Can't Mint Anymore");
 
             if (nftMints[_msgSender()] == 0) {
                 mint = requestQty;
             } else {
-                require(requestQty < 2, "Erebrus: Mint Only 2 per wallet");
+                require(requestQty < 2, "Erebrus: Mint Only 2 Per Wallet");
                 mint = requestQty;
             }
             nftMints[_msgSender()] += requestQty;
@@ -138,7 +140,7 @@ contract Erebrus is
             }
         } else {
             // Public Mint
-            require(msg.value >= publicSalePrice, "Erebrus: Not Enough Funds");
+            require(msg.value >= publicSalePrice, "Erebrus: Not enough funds");
             require(nftMints[_msgSender()] < 1, "Erebrus: Can't mint anymore");
             mint = 1;
             nftMints[_msgSender()] += 1;
@@ -158,7 +160,7 @@ contract Erebrus is
      * - The caller must own `tokenId` or be an approved operator.
      */
     function burnNFT(uint256 tokenId) public {
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "Erebrus: caller is not token owner or approved");
+        require(_isApprovedOrOwner(_msgSender(), tokenId), "Erebrus: Not Owner Or Approved");
         _burn(tokenId);
         emit NFTBurnt(tokenId, _msgSender());
         _resetTokenRoyalty(tokenId);
@@ -178,9 +180,9 @@ contract Erebrus is
     function revealCollection(
         string memory _revealURI
     ) external onlyRole(EREBRUS_ADMIN_ROLE) {
-        if (revealed) {
+        if (collectionRevealed) {
             _setBaseURI(_revealURI);
-            revealed = true;
+            collectionRevealed = true;
             emit CollectionURIRevealed(_revealURI);
         }
     }
@@ -218,10 +220,7 @@ contract Erebrus is
         address user,
         uint64 expires
     ) public virtual override {
-        require(
-            _isApprovedOrOwner(_msgSender(), tokenId),
-            "Erebrus: Caller is not owner nor approved"
-        );
+        require(_isApprovedOrOwner(_msgSender(), tokenId), "Erebrus: Not Owner Or Approved");
         UserInfo storage info = _users[tokenId];
         info.user = user;
         info.expires = expires;
@@ -233,9 +232,7 @@ contract Erebrus is
     /** Getter Functions **/
 
     /// @notice get the clientConfig[Data Token]
-    function readClientConfig(
-        uint256 tokenId
-    ) external view returns (string memory) {
+    function readClientConfig(uint256 tokenId) external view returns (string memory) {
         require(_exists(tokenId), "Erebrus: Non-Existent Token");
         return clientConfig[tokenId];
     }
@@ -244,9 +241,7 @@ contract Erebrus is
     /// @dev The zero address indicates that there is no user or the user is expired
     /// @param tokenId The NFT to get the user address for
     /// @return The user address for this NFT
-    function userOf(
-        uint256 tokenId
-    ) public view virtual override returns (address) {
+    function userOf(uint256 tokenId) public view virtual override returns (address) {
         if (uint256(_users[tokenId].expires) >= block.timestamp) {
             return _users[tokenId].user;
         } else {
@@ -258,9 +253,7 @@ contract Erebrus is
     /// @dev The zero value indicates that there is no user
     /// @param tokenId The NFT to get the user expires for
     /// @return The user expires for this NFT
-    function userExpires(
-        uint256 tokenId
-    ) public view virtual override returns (uint256) {
+    function userExpires(uint256 tokenId) public view virtual override returns (uint256) {
         return _users[tokenId].expires;
     }
 
