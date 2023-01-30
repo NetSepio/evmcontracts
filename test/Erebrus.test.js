@@ -18,6 +18,10 @@ describe("Erebrus ", function() {
         )
         Erebrus = await ErebrusInstance.deployed()
         accounts = await ethers.getSigners()
+
+        //unpausing the contract
+        await Erebrus.unpause()
+        
         // Doing  Public Mint
         await Erebrus.mintNFT({
             value: pPrice
