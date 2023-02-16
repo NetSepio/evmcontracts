@@ -39,10 +39,10 @@ module.exports = {
         maticmum: {
             chainId: 80001,
             url: MATICMUM_RPC_URL,
-            // accounts: [PRIVATE_KEY],
-            accounts: {
-                mnemonic: MNEMONIC
-            }
+            accounts: [PRIVATE_KEY]
+            // accounts: {
+            //     mnemonic: MNEMONIC
+            // }
         },
         ethereum: {
             networkId: 1,

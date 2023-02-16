@@ -42,6 +42,9 @@ contract Erebrus is
     uint256 public publicSalePrice;
     uint256 public allowListSalePrice;
     string public baseURI;
+    uint256 public platFormFeeBasisPoint;
+
+    //function to update the plateformfeebasispoint
 
     struct RentableItems {
         bool isRentable; //to check is renting is available
@@ -63,6 +66,12 @@ contract Erebrus is
     event NFTMinted(uint tokenId, address indexed owner);
     event NFTBurnt(uint tokenId, address indexed ownerOrApproved);
     event ClientConfigUpdated(uint tokenId, string data, string newData);
+    event RentalInfo(
+        uint256 tokenId,
+        bool isRentable,
+        uint256 price,
+        address indexed Renter
+    );
 
     constructor(
         string memory name,
@@ -70,12 +79,14 @@ contract Erebrus is
         string memory initialURI,
         uint256 _publicSalePrice,
         uint256 _allowListSalePrice,
-        uint _maxSupply
+        uint _maxSupply,
+        uint256 _platFormFeeBasisPoint
     ) ERC721(name, symbol) {
         baseURI = initialURI;
         publicSalePrice = _publicSalePrice;
         allowListSalePrice = _allowListSalePrice;
         maxSupply = _maxSupply;
+        platFormFeeBasisPoint = _platFormFeeBasisPoint;
 
         _setupRole(EREBRUS_ADMIN_ROLE, _msgSender());
 
@@ -85,6 +96,13 @@ contract Erebrus is
 
         // Setting default royalty to 5%
         _setDefaultRoyalty(_msgSender(), 500);
+    }
+
+    ///@notice set the plaformFeeBasisPoint
+    function updateFee(
+        uint256 _platFormFeeBasisPoint
+    ) external onlyRole(EREBRUS_OPERATOR_ROLE) {
+        platFormFeeBasisPoint = _platFormFeeBasisPoint;
     }
 
     /// @notice set the price of the minting by ADMIN
@@ -241,7 +259,8 @@ contract Erebrus is
     /** ERC4907 Functionalities **/
 
     /// @notice set the user and expires of an NFT
-    /// @dev The zero address indicates there is no user
+    /// @dev This function is used to gift a person by the owner,
+    /// The zero address indicates there is no user
     /// Throws if `tokenId` is not valid NFT
     /// @param user  The new user of the NFT
     /// @param expires  UNIX timestamp, The new user could use the NFT before expires
@@ -250,10 +269,14 @@ contract Erebrus is
         uint256 tokenId,
         address user,
         uint64 expires
-    ) public virtual override onlyRole(EREBRUS_ADMIN_ROLE) {
+    ) public virtual override {
         require(
             _isApprovedOrOwner(_msgSender(), tokenId),
             "Erebrus: Caller is not  token owner Or approved"
+        );
+        require(
+            userOf(tokenId) == address(0),
+            "Erebrus: Item is already subscribed"
         );
         RentableItems storage info = rentables[tokenId];
         info.user = user;
@@ -262,17 +285,19 @@ contract Erebrus is
     }
 
     /// @notice set tht rentable price and status by the owner
-    function setRentables(
+    function setRentInfo(
         uint256 tokenId,
-        bool _isRentable,
-        uint256 _amountPerMinute
+        bool isRentable,
+        uint256 amountPerMinute
     ) public {
         require(
             _isApprovedOrOwner(_msgSender(), tokenId),
             "Erebrus: Caller is not  token owner Or approved"
         );
-        rentables[tokenId].isRentable = _isRentable;
-        rentables[tokenId].amountPerMinute = _amountPerMinute;
+        rentables[tokenId].isRentable = isRentable;
+        rentables[tokenId].amountPerMinute = amountPerMinute;
+
+        emit RentalInfo(tokenId, isRentable, amountPerMinute, _msgSender());
     }
 
     /// @notice to use for renting an item
@@ -291,13 +316,14 @@ contract Erebrus is
             "Erebrus: Item is already subscribed"
         );
         require(time > 0, "Erebrus: Time cannot be less than 1 hour");
-        require(time <= 4383, "Erebrus: Time cannot be more than 6 months");
+        require(time <= 4320, "Erebrus: Time cannot be more than 6 months");
 
-        uint256 amount = rentables[tokenId].amountPerMinute * (time * 60);
+        uint amount = amoutRequire(tokenId, time);
 
         require(msg.value >= amount, "Erebrus: Insufficient Funds");
 
-        payable(ownerOf(tokenId)).transfer(amount);
+        uint256 payoutForCreator = (msg.value * platFormFeeBasisPoint) / 1000;
+        payable(ownerOf(tokenId)).transfer(payoutForCreator);
 
         RentableItems storage info = rentables[tokenId];
         info.user = _msgSender();
@@ -341,10 +367,12 @@ contract Erebrus is
         return rentables[tokenId].expires;
     }
 
+    /// @notice to calculate the amount of money required
+    /// to rent a item for an certain time
     function amoutRequire(
         uint256 tokenId,
         uint256 time
-    ) external view returns (uint256) {
+    ) public view returns (uint256) {
         uint256 amount = rentables[tokenId].amountPerMinute * (time * 60);
         return amount;
     }

@@ -14,7 +14,8 @@ describe("Erebrus ", function() {
             URI,
             pPrice,
             aPrice,
-            500
+            500,
+            300
         )
         Erebrus = await ErebrusInstance.deployed()
         accounts = await ethers.getSigners()
@@ -195,7 +196,7 @@ describe("Erebrus ", function() {
                 Erebrus.connect(accounts[4]).rent(1, 0, { value: sendValue })
             ).to.be.revertedWith("Erebrus: Not available for Renting")
 
-            await Erebrus.setRentables(1, true, val)
+            await Erebrus.setRentInfo(1, true, val)
 
             sendValue = val.mul(120)
 

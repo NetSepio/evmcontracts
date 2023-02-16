@@ -1,3 +1,4 @@
+# Solidity API
 
 ## Erebrus
 
@@ -61,6 +62,12 @@ uint256 allowListSalePrice
 string baseURI
 ```
 
+### platFormFeeBasisPoint
+
+```solidity
+uint256 platFormFeeBasisPoint
+```
+
 ### RentableItems
 
 ```solidity
@@ -120,11 +127,25 @@ event NFTBurnt(uint256 tokenId, address ownerOrApproved)
 event ClientConfigUpdated(uint256 tokenId, string data, string newData)
 ```
 
+### RentalInfo
+
+```solidity
+event RentalInfo(uint256 tokenId, bool isRentable, uint256 price, address Renter)
+```
+
 ### constructor
 
 ```solidity
-constructor(string name, string symbol, string initialURI, uint256 _publicSalePrice, uint256 _allowListSalePrice, uint256 _maxSupply) public
+constructor(string name, string symbol, string initialURI, uint256 _publicSalePrice, uint256 _allowListSalePrice, uint256 _maxSupply, uint256 _platFormFeeBasisPoint) public
 ```
+
+### updateFee
+
+```solidity
+function updateFee(uint256 _platFormFeeBasisPoint) external
+```
+
+set the plaformFeeBasisPoint
 
 ### setPrice
 
@@ -224,7 +245,8 @@ function setUser(uint256 tokenId, address user, uint64 expires) public virtual
 
 set the user and expires of an NFT
 
-_The zero address indicates there is no user
+_This function is used to gift a person by the owner,
+The zero address indicates there is no user
 Throws if `tokenId` is not valid NFT_
 
 #### Parameters
@@ -235,10 +257,10 @@ Throws if `tokenId` is not valid NFT_
 | user | address | The new user of the NFT |
 | expires | uint64 | UNIX timestamp, The new user could use the NFT before expires |
 
-### setRentables
+### setRentInfo
 
 ```solidity
-function setRentables(uint256 tokenId, bool _isRentable, uint256 _amountPerMinute) public
+function setRentInfo(uint256 tokenId, bool isRentable, uint256 amountPerMinute) public
 ```
 
 set tht rentable price and status by the owner
@@ -317,8 +339,11 @@ _The zero value indicates that there is no user_
 ### amoutRequire
 
 ```solidity
-function amoutRequire(uint256 tokenId, uint256 time) external view returns (uint256)
+function amoutRequire(uint256 tokenId, uint256 time) public view returns (uint256)
 ```
+
+to calculate the amount of money required
+to rent a item for an certain time
 
 ### _baseURI
 
