@@ -21,9 +21,12 @@ contract Erebrus is
     // Set Constants for Interface ID and Roles
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
-    bytes32 public constant EREBRUS_ADMIN_ROLE = keccak256("EREBRUS_ADMIN_ROLE");
-    bytes32 public constant EREBRUS_OPERATOR_ROLE = keccak256("EREBRUS_OPERATOR_ROLE");
-    bytes32 public constant EREBRUS_ALLOWLISTED_ROLE = keccak256("EREBRUS_ALLOWLISTED_ROLE");
+    bytes32 public constant EREBRUS_ADMIN_ROLE =
+        keccak256("EREBRUS_ADMIN_ROLE");
+    bytes32 public constant EREBRUS_OPERATOR_ROLE =
+        keccak256("EREBRUS_OPERATOR_ROLE");
+    bytes32 public constant EREBRUS_ALLOWLISTED_ROLE =
+        keccak256("EREBRUS_ALLOWLISTED_ROLE");
 
     uint256 public immutable maxSupply; //set in the constructor
 
@@ -39,10 +42,15 @@ contract Erebrus is
     uint256 public publicSalePrice;
     uint256 public allowListSalePrice;
     string public baseURI;
+    uint256 public platFormFeeBasisPoint;
 
-    struct UserInfo {
+    //function to update the plateformfeebasispoint
+
+    struct RentableItems {
+        bool isRentable; //to check is renting is available
         address user; // address of user role
         uint64 expires; // unix timestamp, user expires
+        uint256 amountPerMinute;
     }
 
     modifier whenNotpaused() {
@@ -51,26 +59,34 @@ contract Erebrus is
     }
 
     mapping(uint256 => string) public clientConfig;
-    mapping(uint256 => UserInfo) internal _users; // storing the data of the user who are renting the NFT
+    mapping(uint256 => RentableItems) internal rentables; // storing the data of the user who are renting the NFT
     mapping(address => uint) public nftMints;
 
     event CollectionURIRevealed(string revealedURI);
     event NFTMinted(uint tokenId, address indexed owner);
     event NFTBurnt(uint tokenId, address indexed ownerOrApproved);
     event ClientConfigUpdated(uint tokenId, string data, string newData);
+    event RentalInfo(
+        uint256 tokenId,
+        bool isRentable,
+        uint256 price,
+        address indexed Renter
+    );
 
     constructor(
-        string memory _name,
-        string memory _symbol,
-        string memory _initialURI,
+        string memory name,
+        string memory symbol,
+        string memory initialURI,
         uint256 _publicSalePrice,
         uint256 _allowListSalePrice,
-        uint _maxSupply
-    ) ERC721(_name, _symbol) {
-        baseURI = _initialURI;
+        uint _maxSupply,
+        uint256 _platFormFeeBasisPoint
+    ) ERC721(name, symbol) {
+        baseURI = initialURI;
         publicSalePrice = _publicSalePrice;
         allowListSalePrice = _allowListSalePrice;
         maxSupply = _maxSupply;
+        platFormFeeBasisPoint = _platFormFeeBasisPoint;
 
         _setupRole(EREBRUS_ADMIN_ROLE, _msgSender());
 
@@ -82,20 +98,35 @@ contract Erebrus is
         _setDefaultRoyalty(_msgSender(), 500);
     }
 
-    function setPrice(uint256 _publicSalePrice, uint256 _allowlistprice) external onlyRole(EREBRUS_ADMIN_ROLE) {
+    ///@notice set the plaformFeeBasisPoint
+    function updateFee(
+        uint256 _platFormFeeBasisPoint
+    ) external onlyRole(EREBRUS_OPERATOR_ROLE) {
+        platFormFeeBasisPoint = _platFormFeeBasisPoint;
+    }
+
+    /// @notice set the price of the minting by ADMIN
+    function setPrice(
+        uint256 _publicSalePrice,
+        uint256 _allowlistprice
+    ) external onlyRole(EREBRUS_ADMIN_ROLE) {
         publicSalePrice = _publicSalePrice;
         allowListSalePrice = _allowlistprice;
     }
 
+    /// @notice pause or stop the contract from working by ADMIN
     function pause() public onlyRole(EREBRUS_ADMIN_ROLE) {
         mintPaused = true;
     }
 
+    /// @notice Unpause the contract by ADMIN
     function unpause() public onlyRole(EREBRUS_ADMIN_ROLE) {
         mintPaused = false;
     }
 
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    function tokenURI(
+        uint256 tokenId
+    ) public view override returns (string memory) {
         string memory _tokenURI = _baseURI(); //ERC721
         if (collectionRevealed) {
             return string(abi.encodePacked(_tokenURI, "/", tokenId.toString()));
@@ -104,25 +135,40 @@ contract Erebrus is
         }
     }
 
-    // Modify the mint windows
-    function editMintWindows(bool _allowListMintOpen) external onlyRole(EREBRUS_ADMIN_ROLE) {
+    /// @notice Modify the mint windows
+    function editMintWindows(
+        bool _allowListMintOpen
+    ) external onlyRole(EREBRUS_ADMIN_ROLE) {
         allowListMintOpen = _allowListMintOpen;
     }
 
+    /// @notice to mint NFT's
     function mintNFT() external payable whenNotpaused {
         require(totalSupply() <= maxSupply, "Erebrus: Collection Sold Out!");
         uint mint;
         if (allowListMintOpen) {
             // Allow List Mint
-            require(hasRole(EREBRUS_ALLOWLISTED_ROLE, _msgSender()), "Erebrus: Only For Allowlisted");
-            require(msg.value >= allowListSalePrice, "Erebrus: Not Enough Funds");
+            require(
+                hasRole(EREBRUS_ALLOWLISTED_ROLE, _msgSender()),
+                "Erebrus: Only For Allowlisted"
+            );
+            require(
+                msg.value >= allowListSalePrice,
+                "Erebrus: Not Enough Funds"
+            );
             // Check Edge Case for when only 1 token remains
             uint availability = (maxSupply * 30) / 100 - totalSupply();
             uint requestQty = msg.value / allowListSalePrice;
-            
-            require(totalSupply() <= (maxSupply * 30) / 100, "Erebrus: Max Supply Exceeded");
+
+            require(
+                totalSupply() <= (maxSupply * 30) / 100,
+                "Erebrus: Max Supply Exceeded"
+            );
             require(requestQty <= 2, "Erebrus: Can't Mint More Than 2");
-            require(requestQty <= availability, "Ererbrus : NFT Qty Unavailable");
+            require(
+                requestQty <= availability,
+                "Ererbrus : NFT Qty Unavailable"
+            );
             require(nftMints[_msgSender()] < 2, "Erebrus: Can't Mint Anymore");
 
             if (nftMints[_msgSender()] == 0) {
@@ -160,7 +206,10 @@ contract Erebrus is
      * - The caller must own `tokenId` or be an approved operator.
      */
     function burnNFT(uint256 tokenId) public {
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "Erebrus: Not Owner Or Approved");
+        require(
+            _isApprovedOrOwner(_msgSender(), tokenId),
+            "Erebrus: Not Owner Or Approved"
+        );
         _burn(tokenId);
         emit NFTBurnt(tokenId, _msgSender());
         _resetTokenRoyalty(tokenId);
@@ -210,7 +259,8 @@ contract Erebrus is
     /** ERC4907 Functionalities **/
 
     /// @notice set the user and expires of an NFT
-    /// @dev The zero address indicates there is no user
+    /// @dev This function is used to gift a person by the owner,
+    /// The zero address indicates there is no user
     /// Throws if `tokenId` is not valid NFT
     /// @param user  The new user of the NFT
     /// @param expires  UNIX timestamp, The new user could use the NFT before expires
@@ -220,11 +270,65 @@ contract Erebrus is
         address user,
         uint64 expires
     ) public virtual override {
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "Erebrus: Not Owner Or Approved");
-        UserInfo storage info = _users[tokenId];
+        require(
+            _isApprovedOrOwner(_msgSender(), tokenId),
+            "Erebrus: Caller is not  token owner Or approved"
+        );
+        require(
+            userOf(tokenId) == address(0),
+            "Erebrus: Item is already subscribed"
+        );
+        RentableItems storage info = rentables[tokenId];
         info.user = user;
         info.expires = expires;
         emit UpdateUser(tokenId, user, expires);
+    }
+
+    /// @notice set tht rentable price and status by the owner
+    function setRentInfo(
+        uint256 tokenId,
+        bool isRentable,
+        uint256 amountPerMinute
+    ) public {
+        require(
+            _isApprovedOrOwner(_msgSender(), tokenId),
+            "Erebrus: Caller is not  token owner Or approved"
+        );
+        rentables[tokenId].isRentable = isRentable;
+        rentables[tokenId].amountPerMinute = amountPerMinute;
+
+        emit RentalInfo(tokenId, isRentable, amountPerMinute, _msgSender());
+    }
+
+    /// @notice to use for renting an item
+    /// @dev The zero address indicates there is no user
+    /// Throws if `tokenId` is not valid NFT,
+    /// time cannot be less than 1 hour or more than 6 months
+    /// @param time  is in hours , Ex- 1,2,3
+
+    function rent(uint tokenId, uint256 time) external payable {
+        require(
+            rentables[tokenId].isRentable,
+            "Erebrus: Item is not open for renting"
+        );
+        require(
+            userOf(tokenId) == address(0),
+            "Erebrus: Item is already subscribed"
+        );
+        require(time > 0, "Erebrus: Time cannot be less than 1 hour");
+        require(time <= 4320, "Erebrus: Time cannot be more than 6 months");
+
+        uint amount = amoutRequire(tokenId, time);
+
+        require(msg.value >= amount, "Erebrus: Insufficient Funds");
+
+        uint256 payoutForCreator = (msg.value * platFormFeeBasisPoint) / 1000;
+        payable(ownerOf(tokenId)).transfer(payoutForCreator);
+
+        RentableItems storage info = rentables[tokenId];
+        info.user = _msgSender();
+        info.expires = uint64(block.timestamp + (time * 3600));
+        emit UpdateUser(tokenId, _msgSender(), info.expires);
     }
 
     /********************************************* */
@@ -232,7 +336,9 @@ contract Erebrus is
     /** Getter Functions **/
 
     /// @notice get the clientConfig[Data Token]
-    function readClientConfig(uint256 tokenId) external view returns (string memory) {
+    function readClientConfig(
+        uint256 tokenId
+    ) external view returns (string memory) {
         require(_exists(tokenId), "Erebrus: Non-Existent Token");
         return clientConfig[tokenId];
     }
@@ -241,9 +347,11 @@ contract Erebrus is
     /// @dev The zero address indicates that there is no user or the user is expired
     /// @param tokenId The NFT to get the user address for
     /// @return The user address for this NFT
-    function userOf(uint256 tokenId) public view virtual override returns (address) {
-        if (uint256(_users[tokenId].expires) >= block.timestamp) {
-            return _users[tokenId].user;
+    function userOf(
+        uint256 tokenId
+    ) public view virtual override returns (address) {
+        if (uint256(rentables[tokenId].expires) >= block.timestamp) {
+            return rentables[tokenId].user;
         } else {
             return address(0);
         }
@@ -253,8 +361,20 @@ contract Erebrus is
     /// @dev The zero value indicates that there is no user
     /// @param tokenId The NFT to get the user expires for
     /// @return The user expires for this NFT
-    function userExpires(uint256 tokenId) public view virtual override returns (uint256) {
-        return _users[tokenId].expires;
+    function userExpires(
+        uint256 tokenId
+    ) public view virtual override returns (uint256) {
+        return rentables[tokenId].expires;
+    }
+
+    /// @notice to calculate the amount of money required
+    /// to rent a item for an certain time
+    function amoutRequire(
+        uint256 tokenId,
+        uint256 time
+    ) public view returns (uint256) {
+        uint256 amount = rentables[tokenId].amountPerMinute * (time * 60);
+        return amount;
     }
 
     /************************************* */
@@ -270,8 +390,8 @@ contract Erebrus is
     ) internal virtual override(ERC721, ERC721Enumerable) {
         super._beforeTokenTransfer(from, to, tokenId, 1);
 
-        if (from != to && _users[tokenId].user != address(0)) {
-            delete _users[tokenId];
+        if (from != to && rentables[tokenId].user != address(0)) {
+            delete rentables[tokenId];
             emit UpdateUser(tokenId, address(0), 0);
         }
     }

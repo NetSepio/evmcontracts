@@ -14,14 +14,15 @@ describe("Erebrus ", function() {
             URI,
             pPrice,
             aPrice,
-            500
+            500,
+            300
         )
         Erebrus = await ErebrusInstance.deployed()
         accounts = await ethers.getSigners()
 
         //unpausing the contract
         await Erebrus.unpause()
-        
+
         // Doing  Public Mint
         await Erebrus.mintNFT({
             value: pPrice
@@ -189,10 +190,39 @@ describe("Erebrus ", function() {
     })
     describe("Rental ", () => {
         it("setting Up the User", async () => {
-            const time = Date.now()
-            await Erebrus.setUser(1, accounts[2].address, time + 600)
-            expect(await Erebrus.userOf(1)).to.be.equal(accounts[2].address)
-            expect(await Erebrus.userExpires(1)).to.be.equal(time + 600)
+            val = ethers.utils.parseUnits("1", "gwei")
+            //to check you cannot do renting if status is false
+            expect(
+                Erebrus.connect(accounts[4]).rent(1, 0, { value: sendValue })
+            ).to.be.revertedWith("Erebrus: Not available for Renting")
+
+            await Erebrus.setRentInfo(1, true, val)
+
+            sendValue = val.mul(120)
+
+            //to check time can't be less than 1 hour
+            expect(
+                Erebrus.connect(accounts[4]).rent(1, 0, { value: sendValue })
+            ).to.be.revertedWith("Erebrus: Time cannot be less than 1 hour")
+
+            //to check time can't be more than 6 months
+            expect(
+                Erebrus.connect(accounts[4]).rent(1, 4384, { value: sendValue })
+            ).to.be.revertedWith("Erebrus: Time cannot be less than 1 hour")
+
+            await Erebrus.connect(accounts[4]).rent(1, 2, {
+                value: sendValue
+            })
+            const block = await Erebrus.provider.getBlock("latest")
+            expect(await Erebrus.userOf(1)).to.be.equal(accounts[4].address)
+            expect(await Erebrus.userExpires(1)).to.be.equal(
+                block.timestamp + 7200
+            )
+
+            //if already rented cannot be rented again
+            expect(
+                Erebrus.connect(accounts[5]).rent(1, 1, { value: sendValue })
+            ).to.be.revertedWith("Erbrus: Item renting time is not expired")
         })
     })
     describe("ERC2981", () => {
