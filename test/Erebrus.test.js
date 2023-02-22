@@ -135,7 +135,7 @@ describe("Erebrus ", function() {
                     })
                 ).to.be.revertedWith("Erebrus: Mint Only 2 per wallet")
             })
-            it("to check if the ALLOWlister can mint 2 nft's", async () => {
+            it("to check if the AllowLister can mint 2 nft's", async () => {
                 const ErebrusUser3 = await Erebrus.connect(accounts[3])
                 const double = ethers.utils.parseEther("0.02")
                 await ErebrusUser3.mintNFT({
@@ -256,6 +256,48 @@ describe("Erebrus ", function() {
                 10,
                 "Royalty has not been set back to default"
             )
+        })
+    })
+    describe("Reveal", () => {
+        it("To check the Reveal", async () => {
+            let URL = "www.ABC.com"
+            await Erebrus.revealCollection(URL)
+            URL = URL + "/1"
+            expect(await Erebrus.tokenURI(1)).to.be.equal(URL)
+        })
+    })
+
+    describe("Other Functions", () => {
+        it("Pause and Unpause", async () => {
+            let User = accounts[7]
+
+            await Erebrus.pause()
+            expect(Erebrus.mintNFT({ value: ethers.utils.parseEther("1") })).to
+                .be.reverted
+            await Erebrus.unpause()
+            await Erebrus.connect(User).mintNFT({
+                value: ethers.utils.parseEther("1")
+            })
+            expect(await Erebrus.balanceOf(User.address)).to.be.equal(1)
+        })
+        it("Set the User by the Token Owner ", async () => {
+            const block = await Erebrus.provider.getBlock("latest")
+            const timestamp = block.timestamp
+            await Erebrus.connect(accounts[7]).setUser(
+                9,
+                accounts[0].address,
+                timestamp + 60
+            )
+            expect(await Erebrus.userOf(9)).to.be.equal(accounts[0].address)
+            expect(await Erebrus.userExpires(9)).to.be.equal(timestamp + 60)
+            //to check the user cannot change the User while already subscribed
+            expect(
+                Erebrus.setUser(9, accounts[1].address, timestamp + 100)
+            ).to.be.revertedWith("Erebrus: Item is already subscribed")
+        })
+        it("update Fee ", async () => {
+            await Erebrus.updateFee(500)
+            expect(await Erebrus.platFormFeeBasisPoint()).to.be.equal(500)
         })
     })
 })
