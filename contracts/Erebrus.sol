@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "./IERC4907.sol";
+import "./common/IERC4907.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "./common/extensions/ERC721ABurnable.sol";
 
 contract Erebrus is
     Context,
-    ERC721,
     IERC4907,
     AccessControlEnumerable,
-    ERC721Enumerable,
+    ERC721ABurnable,
     ERC2981
 {
     // Set Constants for Interface ID and Roles
@@ -25,8 +23,6 @@ contract Erebrus is
         keccak256("EREBRUS_ADMIN_ROLE");
     bytes32 public constant EREBRUS_OPERATOR_ROLE =
         keccak256("EREBRUS_OPERATOR_ROLE");
-    bytes32 public constant EREBRUS_ALLOWLISTED_ROLE =
-        keccak256("EREBRUS_ALLOWLISTED_ROLE");
 
     uint256 public immutable maxSupply; // Set in the constructor
 
@@ -38,9 +34,7 @@ contract Erebrus is
 
     bool public collectionRevealed = false;
     bool public mintPaused = true;
-    bool public allowListMintStatus;
     uint256 public publicSalePrice;
-    uint256 public allowListSalePrice;
     string public baseURI;
     uint256 public platFormFeeBasisPoint;
 
@@ -76,21 +70,20 @@ contract Erebrus is
         string memory _symbol,
         string memory _initialURI,
         uint256 _publicSalePrice,
-        uint256 _allowListSalePrice,
         uint256 _maxSupply,
         uint256 _platFormFeeBasisPoint
-    ) ERC721(_name, _symbol) {
+    ) ERC721A(_name, _symbol) {
         baseURI = _initialURI;
         publicSalePrice = _publicSalePrice;
-        allowListSalePrice = _allowListSalePrice;
         maxSupply = _maxSupply;
         platFormFeeBasisPoint = _platFormFeeBasisPoint;
 
         _setupRole(EREBRUS_ADMIN_ROLE, _msgSender());
-
         _setRoleAdmin(EREBRUS_ADMIN_ROLE, EREBRUS_ADMIN_ROLE);
-        _setRoleAdmin(EREBRUS_ALLOWLISTED_ROLE, EREBRUS_OPERATOR_ROLE);
         _setRoleAdmin(EREBRUS_OPERATOR_ROLE, EREBRUS_ADMIN_ROLE);
+
+        // add Admin to operator
+        grantRole(EREBRUS_OPERATOR_ROLE, _msgSender());
 
         // Setting default royalty to 5%
         _setDefaultRoyalty(_msgSender(), 500);
@@ -105,95 +98,29 @@ contract Erebrus is
 
     /// @notice Admin Role can set the mint price
     function setPrice(
-        uint256 _publicSalePrice,
-        uint256 _allowlistprice
+        uint256 _publicSalePrice
     ) external onlyRole(EREBRUS_ADMIN_ROLE) {
         publicSalePrice = _publicSalePrice;
-        allowListSalePrice = _allowlistprice;
     }
 
     /// @notice pause or stop the contract from working by ADMIN
-    function pause() public onlyRole(EREBRUS_ADMIN_ROLE) {
+    function pause() public onlyRole(EREBRUS_OPERATOR_ROLE) {
         mintPaused = true;
     }
 
     /// @notice Unpause the contract by ADMIN
-    function unpause() public onlyRole(EREBRUS_ADMIN_ROLE) {
+    function unpause() public onlyRole(EREBRUS_OPERATOR_ROLE) {
         mintPaused = false;
     }
 
-    function tokenURI(
-        uint256 tokenId
-    ) public view override returns (string memory) {
-        string memory _tokenURI = _baseURI(); //ERC721
-        if (collectionRevealed) {
-            return string(abi.encodePacked(_tokenURI, "/", tokenId.toString()));
-        } else {
-            return _tokenURI;
-        }
-    }
-
-    /// @notice Modify the mint windows
-    function editMintWindows(
-        bool _allowListMintStatus
-    ) external onlyRole(EREBRUS_ADMIN_ROLE) {
-        allowListMintStatus = _allowListMintStatus;
-    }
-
     /// @notice Call to mint NFTs
-    function mintNFT() external payable whenNotpaused {
+    function mintNFT(uint256 quantity) external payable whenNotpaused {
         require(totalSupply() <= maxSupply, "Erebrus: Collection Sold Out!");
-        uint256 mint = 1;
-        if (allowListMintStatus) {
-            // Allow List Mint
-            require(
-                hasRole(EREBRUS_ALLOWLISTED_ROLE, _msgSender()),
-                "Erebrus: Only For Allowlisted"
-            );
-            require(
-                msg.value >= allowListSalePrice,
-                "Erebrus: Not Enough Funds"
-            );
-
-            // Check Edge Case for when only 1 token remains
-            uint256 availability = (maxSupply * 30) / 100 - totalSupply();
-            uint256 requestQty = msg.value / allowListSalePrice;
-
-            require(
-                totalSupply() <= (maxSupply * 30) / 100,
-                "Erebrus: Max Supply Exceeded"
-            );
-            require(requestQty <= 2, "Erebrus: Can't mint more than 2");
-            require(
-                requestQty <= availability,
-                "Ererbrus : NFT Qty Unavailable"
-            );
-            require(nftMints[_msgSender()] < 2, "Erebrus: Can't Mint Anymore");
-
-            if (nftMints[_msgSender()] == 0) {
-                mint = requestQty;
-            } else {
-                require(requestQty < 2, "Erebrus: Mint only 2 Per Wallet");
-                mint = requestQty;
-            }
-            nftMints[_msgSender()] += requestQty;
-            for (uint8 i = 0; i < mint; i++) {
-                _tokenIdCounter.increment();
-                uint256 tokenId = _tokenIdCounter.current();
-                _safeMint(_msgSender(), tokenId);
-                emit NFTMinted(tokenId, _msgSender());
-            }
-        } else {
-            // Public Mint
-            require(msg.value >= publicSalePrice, "Erebrus: Not enough funds");
-            require(nftMints[_msgSender()] < 1, "Erebrus: Can't mint anymore");
-            nftMints[_msgSender()] += 1;
-
-            _tokenIdCounter.increment();
-            uint256 tokenId = _tokenIdCounter.current();
-            _safeMint(_msgSender(), tokenId);
-            emit NFTMinted(tokenId, _msgSender());
-        }
+        require(
+            publicSalePrice * quantity >= msg.value,
+            "Sotreus: Insuffiecient amount!"
+        );
+        _safeMint(_msgSender(), quantity);
     }
 
     /**
@@ -338,8 +265,6 @@ contract Erebrus is
         emit UpdateUser(_tokenId, _msgSender(), info.expires);
     }
 
-    /********************************************* */
-
     /** Getter Functions **/
 
     /// @notice get the clientConfig[Data Token]
@@ -384,23 +309,40 @@ contract Erebrus is
         return amount;
     }
 
+    function tokenURI(
+        uint256 tokenId
+    ) public view override(ERC721A, IERC721A) returns (string memory) {
+        string memory _tokenURI = _baseURI(); //ERC721
+        if (collectionRevealed) {
+            return string(abi.encodePacked(_tokenURI, "/", tokenId.toString()));
+        } else {
+            return _tokenURI;
+        }
+    }
+
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
     }
 
+    function _isApprovedOrOwner(
+        address user,
+        uint256 tokenId
+    ) private view returns (bool) {
+        return (isApprovedForAll(ownerOf(tokenId), user) ||
+            ownerOf(tokenId) == user);
+    }
+
     /************************************* */
 
-    function _beforeTokenTransfer(
+    function _beforeTokenTransfers(
         address from,
         address to,
-        uint256 tokenId,
-        uint256 batchSize
-    ) internal virtual override(ERC721, ERC721Enumerable) {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
-
-        if (from != to && rentables[tokenId].user != address(0)) {
-            delete rentables[tokenId];
-            emit UpdateUser(tokenId, address(0), 0);
+        uint256 startTokenId,
+        uint256 quantity
+    ) internal virtual override(ERC721A) {
+        if (from != to && rentables[startTokenId].user != address(0)) {
+            delete rentables[startTokenId];
+            emit UpdateUser(startTokenId, address(0), 0);
         }
     }
 
@@ -410,7 +352,7 @@ contract Erebrus is
         public
         view
         virtual
-        override(AccessControlEnumerable, ERC721, ERC721Enumerable, ERC2981)
+        override(AccessControlEnumerable, ERC721A, IERC721A, ERC2981)
         returns (bool)
     {
         if (interfaceId == _INTERFACE_ID_ERC2981) return true;

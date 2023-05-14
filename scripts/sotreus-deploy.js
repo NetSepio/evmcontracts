@@ -5,26 +5,26 @@ async function main() {
     const accounts = await ethers.getSigners()
     const deplpoyer = accounts[0].address
     let pPrice = ethers.utils.parseEther("0.1")
-    const ErebrusNftFactory = await ethers.getContractFactory("Erebrus")
+    const SotreusNftFactory = await ethers.getContractFactory("Sotreus")
     console.log("Deploying contract...")
-    const Erebrus = await ErebrusNftFactory.deploy(
-        "EREBRUS",
-        "ERBS",
+    const Sotreus = await SotreusNftFactory.deploy(
+        "Sotreus",
+        "SRS",
         "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
         pPrice,
         100,
         30
     )
-    await Erebrus.deployed()
-    console.log(`Deployed contract to: ${Erebrus.address}`)
+    await Sotreus.deployed()
+    console.log(`Deployed contract to: ${Sotreus.address}`)
     if (
         (network.config.chainId === 5 && process.env.ETHERSCAN_API_KEY) ||
         (network.config.chainId == 80001 && process.env.POLYGONSCAN_API_KEY)
     ) {
         console.log("Waiting for block confirmations...")
-        await Erebrus.deployTransaction.wait(6)
-        await verify(Erebrus.address, [
-            "EREBRUS",
+        await Sotreus.deployTransaction.wait(6)
+        await verify(Sotreus.address, [
+            "Sotreus",
             "ERBS",
             "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
             pPrice,
