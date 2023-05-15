@@ -13,7 +13,8 @@ describe("Erebrus ", function() {
             URI,
             pPrice,
             500,
-            300
+            30,
+            500
         )
         Erebrus = await ErebrusInstance.deployed()
         accounts = await ethers.getSigners()

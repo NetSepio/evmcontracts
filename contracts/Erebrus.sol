@@ -55,7 +55,11 @@ contract Erebrus is
     mapping(address => uint256) public nftMints;
 
     event CollectionURIRevealed(string revealedURI);
-    event NFTMinted(uint256 tokenId, address indexed owner);
+    event NFTMinted(
+        uint256 startTokenId,
+        uint256 lastTokenId,
+        address indexed owner
+    );
     event NFTBurnt(uint256 tokenId, address indexed ownerOrApproved);
     event ClientConfig(uint256 tokenId, string clientConfig);
     event RentalInfo(
@@ -71,7 +75,8 @@ contract Erebrus is
         string memory _initialURI,
         uint256 _publicSalePrice,
         uint256 _maxSupply,
-        uint256 _platFormFeeBasisPoint
+        uint256 _platFormFeeBasisPoint,
+        uint96 royaltyBasisPoint
     ) ERC721A(_name, _symbol) {
         baseURI = _initialURI;
         publicSalePrice = _publicSalePrice;
@@ -86,7 +91,7 @@ contract Erebrus is
         grantRole(EREBRUS_OPERATOR_ROLE, _msgSender());
 
         // Setting default royalty to 5%
-        _setDefaultRoyalty(_msgSender(), 500);
+        _setDefaultRoyalty(_msgSender(), royaltyBasisPoint);
     }
 
     ///@notice Function to update the plateformFeeBasisPoint
@@ -121,6 +126,7 @@ contract Erebrus is
             "Sotreus: Insuffiecient amount!"
         );
         _safeMint(_msgSender(), quantity);
+        emit NFTMinted(totalSupply(), totalSupply() + quantity, _msgSender());
     }
 
     /**
@@ -340,6 +346,7 @@ contract Erebrus is
         uint256 startTokenId,
         uint256 quantity
     ) internal virtual override(ERC721A) {
+        super._beforeTokenTransfers(from, to, startTokenId, quantity);
         if (from != to && rentables[startTokenId].user != address(0)) {
             delete rentables[startTokenId];
             emit UpdateUser(startTokenId, address(0), 0);

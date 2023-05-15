@@ -13,7 +13,8 @@ async function main() {
         "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
         pPrice,
         100,
-        30
+        30,
+        500
     )
     await Erebrus.deployed()
     console.log(`Deployed contract to: ${Erebrus.address}`)
@@ -29,7 +30,8 @@ async function main() {
             "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
             pPrice,
             100,
-            30
+            30,
+            500
         ])
     }
 }

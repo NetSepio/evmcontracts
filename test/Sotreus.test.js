@@ -155,31 +155,25 @@ describe("Sotreus ", function() {
         it("Add an manager ", async () => {
             expect(
                 await Sotreus.connect(accounts[2]).addManager(
-                    3,
-                    accounts[5].address
+                    accounts[5].address,
+                    3
                 )
             )
                 .to.emit(Sotreus, "TokenManagerAdded")
                 .withArgs(3, accounts[5].address)
 
-            expect(await Sotreus.connect(accounts[5]).isUserManager(3)).to.be
-                .true
+            expect(await Sotreus.connect(accounts[5]).isManager(3)).to.be.true
         })
         it("remove manager", async () => {
-            await Sotreus.connect(accounts[2]).addManager(
-                3,
-                accounts[6].address
-            )
             expect(
                 await Sotreus.connect(accounts[2]).removeManager(
-                    3,
-                    accounts[5].address
+                    accounts[5].address,
+                    3
                 )
             )
                 .to.emit(Sotreus, "TokenManagerRemoved")
                 .withArgs(3, accounts[5].address)
-            expect(await Sotreus.connect(accounts[5]).isUserManager(3)).to.be
-                .false
+            expect(await Sotreus.connect(accounts[5]).isManager(3)).to.be.false
         })
     })
 
@@ -196,11 +190,6 @@ describe("Sotreus ", function() {
             })
             expect(await Sotreus.balanceOf(User.address)).to.be.equal(1)
         })
-        it("update Fee ", async () => {
-            await Sotreus.updateFee(500)
-            expect(await Sotreus.platFormFeeBasisPoint()).to.be.equal(500)
-        })
-
         it("To transfer properly", async () => {
             expect(await Sotreus.ownerOf(3)).to.be.equal(accounts[2].address)
             await Sotreus.connect(accounts[2]).transferFrom(

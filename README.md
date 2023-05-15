@@ -1,9 +1,29 @@
-# EREBRUS
-We are trying to implement a Utility NFT where subscription, royalty for the creator, and rental facilities are available, the NFT will be disclosed on the closing date, and the wallet address will be whitelisted prior to that. 
+# SMART CONTRACTS
+
+## EREBRUS
+We are trying to implement a Utility NFT where subscription, royalty for the creator, and rental facilities are available, the NFT will be disclosed on the closing date.
 Utility non-fungible tokens (NFTs) are digital assets that represent a right or access to a service or product. They are similar to traditional NFTs in that they are unique and cannot be exchanged for other tokens on a one-to-one basis, but they differ in that they have a specific use beyond being a collectible or piece of artwork.
 
-Erebrus deployed to: `0x24631D9a109e4671107044F50D231C5C583759c8`
-https://mumbai.polygonscan.com/address/0x24631D9a109e4671107044F50D231C5C583759c8#code
+Erebrus deployed to: `0x0bB82D21c80B6b24cB94dbD505AC72612fc7077D`
+
+```
+https://mumbai.polygonscan.com/address/0x0bB82D21c80B6b24cB94dbD505AC72612fc7077D#code
+```
+
+## SOTREUS
+
+Introducing our groundbreaking Utility NFT, the ultimate solution for online privacy and security. We have developed a Dedicated VPN with a cutting-edge DNS-based firewall that goes beyond traditional ad-blocking, providing comprehensive protection against unwanted ads, trackers, and malware.
+
+Our Dedicated VPN establishes a secure and encrypted connection, safeguarding your online activities from prying eyes and potential threats. It ensures that your data remains confidential and protected, even when connected to public Wi-Fi networks. With servers strategically located around the globe, you can enjoy seamless and high-speed browsing, without compromising on security.
+
+
+Sotreus deployed to: `0x71ae4062941491F6dcB64EF8653b7F85eED9D6e6`
+
+```
+https://mumbai.polygonscan.com/address/0x71ae4062941491F6dcB64EF8653b7F85eED9D6e6#code
+```
+
+
 # Getting Started
 
 ## Requirements
@@ -68,8 +88,13 @@ npx hardhat node
 And then **in a different terminal**
 
 ```
-npx hardhat run scripts/deploy.js --network localhost
+npx hardhat run scripts/erebrus-deploy.js --network localhost
 ```
+                
+```
+npx hardhat run scripts/sotreus-deploy.js --network localhost
+```
+
 
 And you should see transactions happen in your terminal that is running `npx hardhat node`
 

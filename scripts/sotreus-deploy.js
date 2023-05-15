@@ -12,15 +12,12 @@ async function main() {
         "SRS",
         "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
         pPrice,
-        100,
-        30
+        2000,
+        500
     )
     await Sotreus.deployed()
     console.log(`Deployed contract to: ${Sotreus.address}`)
-    if (
-        (network.config.chainId === 5 && process.env.ETHERSCAN_API_KEY) ||
-        (network.config.chainId == 80001 && process.env.POLYGONSCAN_API_KEY)
-    ) {
+    if (network.config.chainId == 80001 && process.env.POLYGONSCAN_API_KEY) {
         console.log("Waiting for block confirmations...")
         await Sotreus.deployTransaction.wait(6)
         await verify(Sotreus.address, [
@@ -28,8 +25,8 @@ async function main() {
             "ERBS",
             "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
             pPrice,
-            100,
-            30
+            2000,
+            500
         ])
     }
 }

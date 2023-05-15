@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "./common/extensions/ERC721ABurnable.sol";
-import "hardhat/console.sol";
 
 contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
     // Set Constants for Interface ID and Roles
@@ -26,14 +25,18 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
     string public baseURI;
     uint256 public platFormFeeBasisPoint;
 
-    mapping(uint256 => address[]) public managers;
+    mapping(address => mapping(uint256 => bool)) public managers;
 
     mapping(uint256 => string) public clientConfig;
 
     mapping(address => uint256) public nftMints;
 
     event CollectionURIRevealed(string revealedURI);
-    event NFTMinted(uint256 tokenId, address indexed owner);
+    event NFTMinted(
+        uint256 startTokenId,
+        uint256 lastTokenId,
+        address indexed owner
+    );
     event NFTBurnt(uint256 tokenId, address indexed ownerOrApproved);
     event ClientConfig(uint256 tokenId, string clientConfig);
 
@@ -58,12 +61,12 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
         string memory _initialURI,
         uint256 _publicSalePrice,
         uint256 _maxSupply,
-        uint256 _platFormFeeBasisPoint
+        uint96 _royaltyFeeBasisPoint // for default royalty
     ) ERC721A(_name, _symbol) {
         baseURI = _initialURI;
         publicSalePrice = _publicSalePrice;
         maxSupply = _maxSupply;
-        platFormFeeBasisPoint = _platFormFeeBasisPoint;
+        // platFormFeeBasisPoint = _royaltyFeeBasisPoint;
 
         //SETUP ROLE
         _setupRole(SOTREUS_ADMIN_ROLE, _msgSender());
@@ -74,14 +77,7 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
         grantRole(SOTREUS_OPERATOR_ROLE, _msgSender());
 
         // Setting default royalty to 5%
-        _setDefaultRoyalty(_msgSender(), 500);
-    }
-
-    ///@notice Function to update the plateformFeeBasisPoint
-    function updateFee(
-        uint256 _platFormFeeBasisPoint
-    ) external onlyRole(SOTREUS_OPERATOR_ROLE) {
-        platFormFeeBasisPoint = _platFormFeeBasisPoint;
+        _setDefaultRoyalty(_msgSender(), _royaltyFeeBasisPoint);
     }
 
     /// @notice Admin Role can set the mint price
@@ -120,6 +116,7 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
             "Sotreus: Insuffiecient amount!"
         );
         _safeMint(_msgSender(), quantity);
+        emit NFTMinted(totalSupply(), totalSupply() + quantity, _msgSender());
     }
 
     /**
@@ -177,7 +174,7 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
         require(
             hasRole(SOTREUS_OPERATOR_ROLE, _msgSender()) ||
                 _isApprovedOrOwner(_msgSender(), _tokenId),
-            "Sotreus : user not authorized"
+            "Sotreus: user not authorized"
         );
         require(_exists(_tokenId), "Sotreus: Non-Existent Token");
         clientConfig[_tokenId] = _clientConfig;
@@ -185,27 +182,21 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
     }
 
     /* ******************************* */
-
+    
     function addManager(
-        uint256 tokenId,
-        address user
-    ) public whenNotpaused onlyOwnerOrApproved(tokenId) {
-        managers[tokenId].push(user);
+        address user,
+        uint256 tokenId
+    ) public onlyOwnerOrApproved(tokenId) {
+        managers[user][tokenId] = true;
         emit TokenManagerAdded(tokenId, user);
     }
 
     function removeManager(
-        uint256 tokenId,
-        address user
+        address user,
+        uint256 tokenId
     ) external onlyOwnerOrApproved(tokenId) {
-        uint256 arrLen = managers[tokenId].length;
-
-        for (uint i = 0; i < arrLen; i++) {
-            if (managers[tokenId][i] == user) {
-                delete managers[tokenId][i];
-                emit TokenManagerRemoved(tokenId, user);
-            }
-        }
+        managers[user][tokenId] = false;
+        emit TokenManagerRemoved(tokenId, user);
     }
 
     /** Getter Functions **/
@@ -222,18 +213,8 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
         return baseURI;
     }
 
-    function getUser(uint256 tokenId) public view returns (address[] memory) {
-        return managers[tokenId];
-    }
-
-    function isUserManager(uint256 tokenId) external view returns (bool) {
-        uint256 arrLen = managers[tokenId].length;
-        for (uint i = 0; i < arrLen; i++) {
-            if (managers[tokenId][i] == _msgSender()) {
-                return true;
-            }
-        }
-        return false;
+    function isManager(uint256 tokenId) external view returns (bool) {
+        return managers[_msgSender()][tokenId];
     }
 
     function _isApprovedOrOwner(
