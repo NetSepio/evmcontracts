@@ -24,30 +24,33 @@ module.exports = {
                 settings: {
                     optimizer: {
                         enabled: true,
-                        runs: 200
-                    }
-                }
-            }
-        ]
+                        runs: 200,
+                    },
+                },
+            },
+        ],
     },
     networks: {
         hardhat: {
-            chainId: 31337
+            chainId: 31337,
         },
         maticmum: {
             chainId: 80001,
             url: MATICMUM_RPC_URL,
-            accounts: [PRIVATE_KEY]
+            accounts: [PRIVATE_KEY],
+            // accounts: {
+            //     mnemonic: MNEMONIC
+            // }
         },
         ethereum: {
             networkId: 1,
             url: ETHEREUM_RPC_URL,
             accounts: {
-                mnemonic: MNEMONIC
-            }
-        }
+                mnemonic: MNEMONIC,
+            },
+        },
     },
     etherscan: {
-        apiKey: POLYGONSCAN_API_KEY
-    }
+        apiKey: POLYGONSCAN_API_KEY,
+    },
 }

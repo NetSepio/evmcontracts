@@ -22,11 +22,11 @@ async function main() {
         await Sotreus.deployTransaction.wait(6)
         await verify(Sotreus.address, [
             "Sotreus",
-            "ERBS",
+            "SRS",
             "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
             pPrice,
             2000,
-            500
+            500,
         ])
     }
 }
@@ -37,7 +37,7 @@ const verify = async (contractAddress, args) => {
     try {
         await run("verify:verify", {
             address: contractAddress,
-            constructorArguments: args
+            constructorArguments: args,
         })
     } catch (e) {
         if (e.message.toLowerCase().includes("already verified")) {
@@ -51,7 +51,7 @@ const verify = async (contractAddress, args) => {
 // main
 main()
     .then(() => process.exit(0))
-    .catch(error => {
+    .catch((error) => {
         console.error(error)
         process.exit(1)
     })
