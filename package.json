@@ -23,7 +23,9 @@
     "lint": "solhint 'contracts/**/*.sol'",
     "lint:fix": "solhint 'contracts/**/*.sol' --fix",
     "format": "prettier --write .",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "deploy-erebrus" : "hardhat run scripts/erebrus-deploy.js",
+    "deploy-sotreus" : "hardhat run scripts/sotreus-deploy.js"
   },
   "dependencies": {
     "@nomiclabs/hardhat-web3": "^2.0.0",

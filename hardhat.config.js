@@ -6,14 +6,15 @@ require("solidity-docgen")
 require("dotenv").config()
 
 // API_KEY & PRIVATE_KEY
-const MATICMUM_RPC_URL = process.env.MATICMUM_RPC_URL || "https://rpc-mumbai.maticvigil.com"
+const MATICMUM_RPC_URL = process.env.MATICMUM_RPC_URL
 const ETHEREUM_RPC_URL = process.env.ETHEREUM_RPC_URL || "https://ETH-RPC-URL"
 const MNEMONIC = process.env.MNEMONIC || "mnemonic"
-const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY || "Polygonscan-API-key"
+const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "Etherscan-API-key"
 // optional
-const PRIVATE_KEY = process.env.PRIVATE_KEY || "wallet private key"
-const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY || "COINMARKETCAP_API_KEY"
+const PRIVATE_KEY = process.env.PRIVATE_KEY
+const COINMARKETCAP_API_KEY =
+    process.env.COINMARKETCAP_API_KEY || "COINMARKETCAP_API_KEY"
 
 module.exports = {
     solidity: {
@@ -23,33 +24,33 @@ module.exports = {
                 settings: {
                     optimizer: {
                         enabled: true,
-                        runs: 200
-                    }
-                }
-            }
-        ]
+                        runs: 200,
+                    },
+                },
+            },
+        ],
     },
     networks: {
         hardhat: {
-            chainId: 31337
+            chainId: 31337,
         },
         maticmum: {
             chainId: 80001,
             url: MATICMUM_RPC_URL,
-            // accounts: [PRIVATE_KEY]
-            accounts: {
-                mnemonic: MNEMONIC
-            }
+            accounts: [PRIVATE_KEY],
+            // accounts: {
+            //     mnemonic: MNEMONIC
+            // }
         },
         ethereum: {
             networkId: 1,
             url: ETHEREUM_RPC_URL,
             accounts: {
-                mnemonic: MNEMONIC
-            }
-        }
+                mnemonic: MNEMONIC,
+            },
+        },
     },
     etherscan: {
-        apiKey: POLYGONSCAN_API_KEY
-    }
+        apiKey: POLYGONSCAN_API_KEY,
+    },
 }
