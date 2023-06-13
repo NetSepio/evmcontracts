@@ -5,6 +5,7 @@ async function main() {
     const accounts = await ethers.getSigners()
     const deplpoyer = accounts[0].address
     let pPrice = ethers.utils.parseEther("0.1")
+    let sPrice = ethers.utils.parseEther("4")
     const ErebrusNftFactory = await ethers.getContractFactory("Erebrus")
     console.log("Deploying contract...")
     const Erebrus = await ErebrusNftFactory.deploy(
@@ -14,6 +15,7 @@ async function main() {
         pPrice,
         100,
         30,
+        sPrice,
         500
     )
     await Erebrus.deployed()
@@ -31,7 +33,8 @@ async function main() {
             pPrice,
             100,
             30,
-            500
+            sPrice,
+            500,
         ])
     }
 }
@@ -42,7 +45,7 @@ const verify = async (contractAddress, args) => {
     try {
         await run("verify:verify", {
             address: contractAddress,
-            constructorArguments: args
+            constructorArguments: args,
         })
     } catch (e) {
         if (e.message.toLowerCase().includes("already verified")) {
@@ -56,7 +59,7 @@ const verify = async (contractAddress, args) => {
 // main
 main()
     .then(() => process.exit(0))
-    .catch(error => {
+    .catch((error) => {
         console.error(error)
         process.exit(1)
     })

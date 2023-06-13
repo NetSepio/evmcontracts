@@ -1,10 +1,11 @@
 const { expect, assert } = require("chai")
 const { ethers } = require("hardhat")
-describe("Erebrus ", function() {
+describe("Erebrus ", function () {
     let pPrice = ethers.utils.parseEther("1")
+    let sPrice = ethers.utils.parseEther("4")
     let accounts, Erebrus, sendValue, ErebrusInstance
 
-    before(async function() {
+    before(async function () {
         erebrusNftFactory = await ethers.getContractFactory("Erebrus")
         const URI = "http://localhost:9080/artwork"
         ErebrusInstance = await erebrusNftFactory.deploy(
@@ -14,6 +15,7 @@ describe("Erebrus ", function() {
             pPrice,
             500,
             30,
+            sPrice,
             500
         )
         Erebrus = await ErebrusInstance.deployed()
@@ -24,12 +26,12 @@ describe("Erebrus ", function() {
 
         // Doing  Public Mint
         await Erebrus.mintNFT(1, {
-            value: pPrice
+            value: pPrice,
         })
     })
 
     // Constructor
-    describe("Constructor", function() {
+    describe("Constructor", function () {
         it("To check if the Constructor is working ", async () => {
             let bURI = await Erebrus.tokenURI(1)
             let publicMintingPrice = await Erebrus.publicSalePrice()
@@ -53,7 +55,7 @@ describe("Erebrus ", function() {
             for (let i = 1; i <= 2; i++) {
                 const ErebrusUser = await Erebrus.connect(accounts[i])
                 await ErebrusUser.mintNFT(1, {
-                    value: pPrice
+                    value: pPrice,
                 })
             }
             const TOKEN_OWNER1 = await Erebrus.ownerOf(1)
@@ -62,7 +64,7 @@ describe("Erebrus ", function() {
             assert(TOKEN_OWNER2, accounts[2].address)
         })
         // Enable Public Mint
-        it("Public minting", async function() {
+        it("Public minting", async function () {
             const _BalanceOf = await Erebrus.balanceOf(accounts[0].address)
             assert.equal(_BalanceOf, 1)
         })
@@ -98,7 +100,7 @@ describe("Erebrus ", function() {
                 endingDeployerBalance.add(gasCost).toString()
             )
         })
-        it("Only allows the owner to withdraw", async function() {
+        it("Only allows the owner to withdraw", async function () {
             const ErebrusConnectedContract = await Erebrus.connect(accounts[1])
             await expect(ErebrusConnectedContract.withdraw()).to.be.reverted
         })
@@ -134,7 +136,7 @@ describe("Erebrus ", function() {
             ).to.be.revertedWith("Erebrus: Time cannot be less than 1 hour")
 
             await Erebrus.connect(accounts[4]).rent(1, 2, {
-                value: sendValue
+                value: sendValue,
             })
             const block = await Erebrus.provider.getBlock("latest")
             expect(await Erebrus.userOf(1)).to.be.equal(accounts[4].address)
@@ -162,7 +164,7 @@ describe("Erebrus ", function() {
             // const ErebrusConnected2 = await Erebrus.connect(accounts[2])
 
             await ErebrusConnected4.mintNFT(1, {
-                value: pPrice
+                value: pPrice,
             })
             // Royalty info should be set back to default when NFT is burned
             const ErebrusUser = await Erebrus.connect(accounts[1])
@@ -198,7 +200,7 @@ describe("Erebrus ", function() {
                 .to.be.reverted
             await Erebrus.unpause()
             await Erebrus.connect(User).mintNFT(1, {
-                value: ethers.utils.parseEther("1")
+                value: ethers.utils.parseEther("1"),
             })
             expect(await Erebrus.balanceOf(User.address)).to.be.equal(1)
         })
@@ -237,13 +239,78 @@ describe("Erebrus ", function() {
         it("Batch minting", async () => {
             let amount = pPrice.mul(3)
             await Erebrus.connect(accounts[5]).mintNFT(3, {
-                value: amount
+                value: amount,
             })
             expect(await Erebrus.balanceOf(accounts[5].address)).to.be.equal(3)
         })
         it("The token should be burned", async () => {
             expect(await Erebrus.burnNFT(3)).to.emit(Erebrus, "NFTBurnt")
             expect(Erebrus.ownerOf(3)).to.be.reverted
+        })
+    })
+    describe("Subscription", () => {
+        it("If the user can extend the existing Subscription", async () => {
+            const Month = await Erebrus.MONTH()
+            const creator = accounts[2]
+            await Erebrus.connect(creator).mintNFT(1)
+            const block = await Erebrus.provider.getBlock("latest")
+            const freeSubscriptionPeriod = await Erebrus.expiresAt(9)
+            expect(freeSubscriptionPeriod - block.timestamp).to.be.equal(Month)
+        })
+        it("to check if the renewal can be done by both Owner or Operator", async () => {
+            const creator = accounts[2]
+            const Month = await Erebrus.MONTH()
+            // 0 Months
+            expect(Erebrus.connect(creator).renewSubscription(9, 0)).to.be
+                .reverted
+            // 13 Months
+            expect(Erebrus.connect(creator).renewSubscription(9, 13)).to.be
+                .reverted
+            // OTHER THAN OWNER OR OPERATOR
+            expect(
+                Erebrus.connect(accounts[3]).renewSubscription(9, 9)
+            ).to.be.revertedWith(
+                "Erebrus: Caller is owner nor approved or the Operator"
+            )
+
+            //OPERATOR RENEWAL SUBSCRIPTION
+            let previousSubscriptionPeriod = await Erebrus.expiresAt(9)
+            await Erebrus.renewSubscription(9, 1)
+            let newSubscriptionPeriod = await Erebrus.expiresAt(9)
+            expect(
+                newSubscriptionPeriod.sub(previousSubscriptionPeriod)
+            ).to.be.equal(Month)
+            // OWNER RENEWAL SUBSCRIPTION
+            expect(
+                Erebrus.connect(creator).renewSubscription(9, 2)
+            ).to.be.revertedWith("Erebrus: Insufficient Payment")
+
+            let prevTime = await Erebrus.expiresAt(9)
+            await Erebrus.connect(creator).renewSubscription(9, 1, {
+                value: sPrice,
+            })
+            newTime = await Erebrus.expiresAt(9)
+            expect(newTime.sub(prevTime)).to.be.equal(Month)
+        })
+        it("If the user gets the refund after cancellation", async () => {
+            const creator = accounts[2]
+            const Month = await Erebrus.MONTH()
+            //OWNER
+            const startingDeployerBalance = await Erebrus.provider.getBalance(
+                creator.address
+            )
+            expect(Erebrus.connect(accounts[3]).cancelSubscription(9)).to.be
+                .reverted
+            //await Erebrus.connect(creator).cancelSubscription(9)
+            let cancellationFees = await Erebrus.calculateCancellationFee(9)
+            await Erebrus.cancelSubscription(9)
+
+            const endingDeployerBalance = await Erebrus.provider.getBalance(
+                creator.address
+            )
+            expect(
+                endingDeployerBalance.sub(startingDeployerBalance).toString()
+            ).to.be.equal(cancellationFees.toString())
         })
     })
 })

@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "./common/IERC4907.sol";
+import "./common/interface/IERC4907.sol";
+import "./common/interface/IERC5643.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
+import "./common/ERC721A/extensions/ERC721ABurnable.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import "./common/extensions/ERC721ABurnable.sol";
+import "hardhat/console.sol";
 
 contract Erebrus is
     Context,
     IERC4907,
+    IERC5643,
     AccessControlEnumerable,
     ERC721ABurnable,
     ERC2981
@@ -23,20 +25,21 @@ contract Erebrus is
         keccak256("EREBRUS_ADMIN_ROLE");
     bytes32 public constant EREBRUS_OPERATOR_ROLE =
         keccak256("EREBRUS_OPERATOR_ROLE");
+    //UNIX TIME FOR ONE MONTH
+    uint256 public constant MONTH = 2592000;
+    uint public constant WEEK = 648000;
 
     uint256 public immutable maxSupply; // Set in the constructor
 
     using Strings for uint256;
 
-    using Counters for Counters.Counter;
-
-    Counters.Counter private _tokenIdCounter;
-
     bool public collectionRevealed = false;
     bool public mintPaused = true;
     uint256 public publicSalePrice;
-    string public baseURI;
     uint256 public platFormFeeBasisPoint;
+    uint256 public subscriptionPricePerMonth;
+    uint64 public instantTime;
+    string public baseURI;
 
     struct RentableItems {
         bool isRentable; //to check is renting is available
@@ -45,14 +48,21 @@ contract Erebrus is
         uint256 hourlyRate; // amountPerHour
     }
 
+    mapping(uint256 => string) public clientConfig;
+    mapping(uint256 => RentableItems) internal rentables; // storing the data of the user who are renting the NFT
+    mapping(address => uint256) public nftMints;
+    mapping(uint256 => uint64) private _expirations; // subscription
+    mapping(uint256 => uint64) private _operatorRenewal;
+
     modifier whenNotpaused() {
         require(mintPaused == false, "Erebrus: NFT Minting Paused");
         _;
     }
 
-    mapping(uint256 => string) public clientConfig;
-    mapping(uint256 => RentableItems) internal rentables; // storing the data of the user who are renting the NFT
-    mapping(address => uint256) public nftMints;
+    modifier onlyWhenTokenExist(uint256 tokenId) {
+        require(_exists(tokenId), "Erebrus: Not a valid tokenId");
+        _;
+    }
 
     event CollectionURIRevealed(string revealedURI);
     event NFTMinted(
@@ -76,12 +86,14 @@ contract Erebrus is
         uint256 _publicSalePrice,
         uint256 _maxSupply,
         uint256 _platFormFeeBasisPoint,
+        uint256 _subscriptionPricePerMonth,
         uint96 royaltyBasisPoint
     ) ERC721A(_name, _symbol) {
         baseURI = _initialURI;
         publicSalePrice = _publicSalePrice;
         maxSupply = _maxSupply;
         platFormFeeBasisPoint = _platFormFeeBasisPoint;
+        subscriptionPricePerMonth = _subscriptionPricePerMonth;
 
         _setupRole(EREBRUS_ADMIN_ROLE, _msgSender());
         _setRoleAdmin(EREBRUS_ADMIN_ROLE, EREBRUS_ADMIN_ROLE);
@@ -90,9 +102,11 @@ contract Erebrus is
         // add Admin to operator
         grantRole(EREBRUS_OPERATOR_ROLE, _msgSender());
 
-        // Setting default royalty to 5%
+        // Setting default royalty
         _setDefaultRoyalty(_msgSender(), royaltyBasisPoint);
     }
+
+    ///SET BASE URI
 
     ///@notice Function to update the plateformFeeBasisPoint
     function updateFee(
@@ -118,15 +132,41 @@ contract Erebrus is
         mintPaused = false;
     }
 
+    function setSubscriptionCharges(
+        uint256 _subscriptionCharges
+    ) public onlyRole(EREBRUS_OPERATOR_ROLE) {
+        subscriptionPricePerMonth = _subscriptionCharges;
+    }
+
+    function setTime(uint64 _time) public {
+        instantTime = _time;
+    }
+
     /// @notice Call to mint NFTs
     function mintNFT(uint256 quantity) external payable whenNotpaused {
-        require(totalSupply() <= maxSupply, "Erebrus: Collection Sold Out!");
+        uint256 previousSupply = _totalMinted();
+        require(_totalMinted() <= maxSupply, "Erebrus: Collection Sold Out!");
         require(
             publicSalePrice * quantity >= msg.value,
             "Sotreus: Insuffiecient amount!"
         );
         _safeMint(_msgSender(), quantity);
-        emit NFTMinted(totalSupply(), totalSupply() + quantity, _msgSender());
+
+        if (quantity == 1) {
+            uint currentTokenId = _totalMinted();
+            _expirations[currentTokenId] = uint64(block.timestamp + MONTH);
+            _operatorRenewal[currentTokenId] += uint64(MONTH);
+        } else {
+            for (
+                uint i = previousSupply + 1;
+                i <= (previousSupply + quantity);
+                i++
+            ) {
+                _expirations[i] = uint64(block.timestamp + MONTH);
+                _operatorRenewal[i] += uint64(MONTH);
+            }
+        }
+        emit NFTMinted(_totalMinted(), previousSupply + quantity, _msgSender());
     }
 
     /**
@@ -184,7 +224,7 @@ contract Erebrus is
     function writeClientConfig(
         uint256 _tokenId,
         string memory _clientConfig
-    ) external onlyRole(EREBRUS_OPERATOR_ROLE) whenNotpaused {
+    ) external onlyRole(EREBRUS_OPERATOR_ROLE) {
         require(_exists(_tokenId), "Erebrus: Non-Existent Token");
         clientConfig[_tokenId] = _clientConfig;
         emit ClientConfig(_tokenId, _clientConfig);
@@ -203,7 +243,7 @@ contract Erebrus is
         uint256 tokenId,
         address user,
         uint64 expires
-    ) public virtual override whenNotpaused {
+    ) public virtual override {
         require(
             _isApprovedOrOwner(_msgSender(), tokenId),
             "Erebrus: Not token owner Or approved"
@@ -240,10 +280,7 @@ contract Erebrus is
     /// time cannot be less than 1 hour or more than 6 months
     /// @param _timeInHours  is in hours , Ex- 1,2,3
 
-    function rent(
-        uint256 _tokenId,
-        uint256 _timeInHours
-    ) external payable whenNotpaused {
+    function rent(uint256 _tokenId, uint256 _timeInHours) external payable {
         require(
             rentables[_tokenId].isRentable,
             "Erebrus: Not available for rent"
@@ -271,7 +308,105 @@ contract Erebrus is
         emit UpdateUser(_tokenId, _msgSender(), info.expires);
     }
 
+    /** SUBSCRIPTION  **/
+    function renewSubscription(
+        uint256 tokenId,
+        uint64 duration
+    ) external payable onlyWhenTokenExist(tokenId) {
+        require(
+            _isApprovedOrOwner(msg.sender, tokenId) ||
+                hasRole(EREBRUS_OPERATOR_ROLE, _msgSender()),
+            "Erebrus: Caller is owner nor approved or the Operator"
+        );
+        require(
+            duration > 0 && duration <= 12,
+            "Erebrus: Duration must be between 1 to 12 months!"
+        );
+        uint256 _duration = (duration * MONTH);
+        if (!hasRole(EREBRUS_OPERATOR_ROLE, _msgSender())) {
+            require(
+                msg.value >= duration * subscriptionPricePerMonth,
+                "Erebrus: Insufficient Payment"
+            );
+        } else {
+            _operatorRenewal[tokenId] += uint64(_duration);
+        }
+        uint64 newExpiration;
+
+        if (isRenewable(tokenId) == true) {
+            newExpiration = uint64(block.timestamp + _duration);
+            _expirations[tokenId] = newExpiration;
+        } else {
+            newExpiration = uint64(_expirations[tokenId] + _duration);
+            _expirations[tokenId] = newExpiration;
+        }
+        emit SubscriptionUpdate(tokenId, newExpiration);
+    }
+
+    function cancelSubscription(
+        uint256 tokenId
+    ) external payable onlyWhenTokenExist(tokenId) {
+        require(
+            _isApprovedOrOwner(msg.sender, tokenId) ||
+                hasRole(EREBRUS_OPERATOR_ROLE, _msgSender()),
+            "Erebrus: Caller is owner nor approved or the Operator"
+        );
+        require(
+            !isRenewable(tokenId),
+            "Erebrus: The subscription cannot be cancelled!"
+        );
+        uint256 cancellationRefund = calculateCancellationFee(tokenId);
+        _operatorRenewal[tokenId] = 0;
+        if (hasRole(EREBRUS_OPERATOR_ROLE, _msgSender())) {
+            if (address(this).balance < cancellationRefund) {
+                require(
+                    msg.value >= cancellationRefund,
+                    "Erebrus: Insufficient amount!"
+                );
+            }
+            payable(ownerOf(tokenId)).transfer(cancellationRefund);
+        } else {
+            require(
+                address(this).balance >= cancellationRefund,
+                "Erebrus: Insufficient funds, contact support!"
+            );
+            payable(ownerOf(tokenId)).transfer(cancellationRefund);
+        }
+
+        _expirations[tokenId] = uint64(block.timestamp);
+        emit SubscriptionUpdate(tokenId, uint64(block.timestamp));
+    }
+
     /** Getter Functions **/
+
+    ////// SUBSCRIPTION ///////////////
+    function expiresAt(uint256 tokenId) external view returns (uint64) {
+        return _expirations[tokenId];
+    }
+
+    function isRenewable(uint256 tokenId) public view returns (bool) {
+        if (_expirations[tokenId] <= block.timestamp) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function calculateCancellationFee(
+        uint256 tokenId
+    )
+        public
+        view
+        onlyWhenTokenExist(tokenId)
+        returns (uint256 payoutForTheUser)
+    {
+        uint64 time = _expirations[tokenId] - uint64(block.timestamp) - _operatorRenewal[tokenId];
+        uint256 weeksLeft = uint256(time) / WEEK;
+        uint256 cancellationCharges = (subscriptionPricePerMonth * 25) / 100;
+        payoutForTheUser = (weeksLeft - 1) * cancellationCharges; 
+    }
+
+    ////////////////////////////////
 
     /// @notice get the clientConfig[Data Token]
     function readClientConfig(
@@ -336,6 +471,10 @@ contract Erebrus is
     ) private view returns (bool) {
         return (isApprovedForAll(ownerOf(tokenId), user) ||
             ownerOf(tokenId) == user);
+    }
+
+    function getTime() external view returns (uint64) {
+        return instantTime;
     }
 
     /************************************* */

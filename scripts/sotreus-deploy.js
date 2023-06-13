@@ -5,6 +5,7 @@ async function main() {
     const accounts = await ethers.getSigners()
     const deplpoyer = accounts[0].address
     let pPrice = ethers.utils.parseEther("0.1")
+    let sPrice = ethers.utils.parseEther("5")
     const SotreusNftFactory = await ethers.getContractFactory("Sotreus")
     console.log("Deploying contract...")
     const Sotreus = await SotreusNftFactory.deploy(
@@ -13,6 +14,7 @@ async function main() {
         "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
         pPrice,
         2000,
+        sPrice,
         500
     )
     await Sotreus.deployed()
@@ -26,6 +28,7 @@ async function main() {
             "ipfs://bafkreib7oqdtji6xhcsf3usbzt4mzefds7bs3ye2t3aedg2ssy6nyn36gq",
             pPrice,
             2000,
+            sPrice,
             500,
         ])
     }

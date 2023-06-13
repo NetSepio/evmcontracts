@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
+import "./common/interface/IERC5643.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import "./common/extensions/ERC721ABurnable.sol";
+import "./common/ERC721A/extensions/ERC721ABurnable.sol";
 
-contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
+contract Sotreus is
+    Context,
+    AccessControlEnumerable,
+    ERC721ABurnable,
+    ERC2981,
+    IERC5643
+{
     // Set Constants for Interface ID and Roles
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
@@ -15,6 +22,10 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
     bytes32 public constant SOTREUS_OPERATOR_ROLE =
         keccak256("SORTREUS_OPERATOR_ROLE");
 
+    //UNIX TIME FOR ONE MONTH
+    uint256 constant MONTH = 2592000;
+    uint public constant WEEK = 648000;
+
     uint256 public immutable maxSupply; // Set in the constructor
 
     using Strings for uint256;
@@ -22,14 +33,15 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
     bool public collectionRevealed = false;
     bool public mintPaused = true;
     uint256 public publicSalePrice;
-    string public baseURI;
     uint256 public platFormFeeBasisPoint;
+    uint256 public subscriptionPricePerMonth;
+    string public baseURI;
 
     mapping(address => mapping(uint256 => bool)) public managers;
-
     mapping(uint256 => string) public clientConfig;
-
     mapping(address => uint256) public nftMints;
+    mapping(uint256 => uint64) private _expirations; // subscription
+    mapping(uint256 => uint64) private _operatorRenewal;
 
     event CollectionURIRevealed(string revealedURI);
     event NFTMinted(
@@ -52,6 +64,11 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
             _isApprovedOrOwner(_msgSender(), tokenId),
             "Sotreus: Not Owner Or Approved"
         );
+        _;
+    }
+
+    modifier onlyWhenTokenExist(uint256 tokenId) {
+        require(_exists(tokenId), "Sotreus: Not a valid tokenId");
         _;
     }
 
@@ -182,7 +199,7 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
     }
 
     /* ******************************* */
-    
+
     function addManager(
         address user,
         uint256 tokenId
@@ -199,7 +216,101 @@ contract Sotreus is Context, AccessControlEnumerable, ERC721ABurnable, ERC2981 {
         emit TokenManagerRemoved(tokenId, user);
     }
 
+    /** SUBSCRIPTION  **/
+    function renewSubscription(
+        uint256 tokenId,
+        uint64 duration
+    ) external payable {
+        require(
+            _isApprovedOrOwner(msg.sender, tokenId) ||
+                hasRole(SOTREUS_OPERATOR_ROLE, _msgSender()),
+            "Sortreus: Caller is owner nor approved or the Operator"
+        );
+        require(
+            duration > 0 && duration <= 12,
+            "Sortreus: Duration must be between 1 to 12 months!"
+        );
+        uint256 _duration = (duration * MONTH);
+        if (!hasRole(SOTREUS_OPERATOR_ROLE, _msgSender())) {
+            require(
+                msg.value >= duration * subscriptionPricePerMonth,
+                "Sotreus Insufficient Payment!"
+            );
+        } else {
+            _operatorRenewal[tokenId] += uint64(_duration);
+        }
+        uint64 newExpiration;
+
+        if (isRenewable(tokenId) == true) {
+            newExpiration = uint64(block.timestamp + _duration);
+            _expirations[tokenId] = newExpiration;
+        } else {
+            newExpiration = uint64(_expirations[tokenId] + _duration);
+            _expirations[tokenId] = newExpiration;
+        }
+        emit SubscriptionUpdate(tokenId, newExpiration);
+    }
+
+    function cancelSubscription(
+        uint256 tokenId
+    ) external payable onlyWhenTokenExist(tokenId) {
+        require(
+            _isApprovedOrOwner(msg.sender, tokenId) ||
+                hasRole(SOTREUS_OPERATOR_ROLE, _msgSender()),
+            "Sortreus: Caller is owner nor approved or the Operator"
+        );
+        require(
+            !isRenewable(tokenId),
+            "Sortreus: the subscription cannot be cancelled!"
+        );
+        uint256 cancellationCharges = calculateCancellationFee(tokenId);
+        _operatorRenewal[tokenId] = 0;
+        if (hasRole(SOTREUS_OPERATOR_ROLE, _msgSender())) {
+            if (address(this).balance < cancellationCharges) {
+                require(
+                    msg.value >= cancellationCharges,
+                    "Sotreus: Insufficient amount!"
+                );
+            }
+            payable(ownerOf(tokenId)).transfer(cancellationCharges);
+        } else {
+            require(
+                address(this).balance >= cancellationCharges,
+                "Sortreus: Insufficient amount ,please contact the contract handler or creator!"
+            );
+            payable(ownerOf(tokenId)).transfer(cancellationCharges);
+        }
+
+        _expirations[tokenId] = uint64(block.timestamp);
+        emit SubscriptionUpdate(tokenId, uint64(block.timestamp));
+    }
+
     /** Getter Functions **/
+    ////// SUBSCRIPTION ///////////////
+    function expiresAt(uint256 tokenId) external view returns (uint64) {
+        return _expirations[tokenId];
+    }
+
+    function isRenewable(uint256 tokenId) public view returns (bool) {
+        if (_expirations[tokenId] > block.timestamp) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function calculateCancellationFee(
+        uint256 tokenId
+    ) public view returns (uint256 payoutForTheUser) {
+        uint64 time = _expirations[tokenId] -
+            uint64(block.timestamp) -
+            _operatorRenewal[tokenId];
+        uint256 weeksLeft = uint256(time) / WEEK;
+        uint256 cancellationCharges = (subscriptionPricePerMonth * 25) / 100;
+        payoutForTheUser = (weeksLeft - 1) * cancellationCharges;
+    }
+
+    ////////////////////////////////
 
     /// @notice get the clientConfig[Data Token]
     function readClientConfig(
