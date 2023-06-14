@@ -115,6 +115,7 @@ contract Sotreus is
         mintPaused = false;
     }
 
+
     function tokenURI(
         uint256 tokenId
     ) public view override(IERC721A, ERC721A) returns (string memory) {
@@ -342,6 +343,10 @@ contract Sotreus is
         return baseURI;
     }
 
+    
+    /// @notice To check if tokenId is manager or not
+    /// @param tokenId The NFT to get the user expires for
+    /// @return the user is manager or not
     function isManager(uint256 tokenId) external view returns (bool) {
         return managers[_msgSender()][tokenId];
     }

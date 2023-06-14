@@ -38,7 +38,6 @@ contract Erebrus is
     uint256 public publicSalePrice;
     uint256 public platFormFeeBasisPoint;
     uint256 public subscriptionPricePerMonth;
-    uint64 public instantTime;
     string public baseURI;
 
     struct RentableItems {
@@ -107,8 +106,6 @@ contract Erebrus is
         _setDefaultRoyalty(_msgSender(), royaltyBasisPoint);
     }
 
-    ///SET BASE URI
-
     ///@notice Function to update the plateformFeeBasisPoint
     function updateFee(
         uint256 _platFormFeeBasisPoint
@@ -133,14 +130,11 @@ contract Erebrus is
         mintPaused = false;
     }
 
+    /// @notice change the subscription amount only by Admin
     function setSubscriptionCharges(
         uint256 _subscriptionCharges
     ) public onlyRole(EREBRUS_OPERATOR_ROLE) {
         subscriptionPricePerMonth = _subscriptionCharges;
-    }
-
-    function setTime(uint64 _time) public {
-        instantTime = _time;
     }
 
     /// @notice Call to mint NFTs
@@ -169,7 +163,6 @@ contract Erebrus is
         }
         emit NFTMinted(_totalMinted(), previousSupply + quantity, _msgSender());
     }
-
     /**
      * @notice Burns `tokenId`. See {ERC721-_burn}.
      *
@@ -231,7 +224,7 @@ contract Erebrus is
         emit ClientConfig(_tokenId, _clientConfig);
     }
 
-    /** ERC4907 Functionalities **/
+    /** ERC4907 **/
 
     /// @notice set the user and expires of an NFT
     /// @dev This function is used to gift a person by the owner,
@@ -310,6 +303,7 @@ contract Erebrus is
     }
 
     /** SUBSCRIPTION  **/
+
     /// @notice Renews the subscription to an NFT
     /// Throws if `tokenId` is not a valid NFT
     /// Renewal can be done even if existing subscription is not ended
@@ -495,11 +489,6 @@ contract Erebrus is
         return (isApprovedForAll(ownerOf(tokenId), user) ||
             ownerOf(tokenId) == user);
     }
-
-    function getTime() external view returns (uint64) {
-        return instantTime;
-    }
-
     /************************************* */
 
     function _beforeTokenTransfers(
