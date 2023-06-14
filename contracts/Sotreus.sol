@@ -39,8 +39,9 @@ contract Sotreus is
 
     mapping(address => mapping(uint256 => bool)) public managers;
     mapping(uint256 => string) public clientConfig;
-    mapping(address => uint256) public nftMints;
-    mapping(uint256 => uint64) private _expirations; // subscription
+    /// @notice To store subscription info
+    mapping(uint256 => uint64) private _expirations;
+    /// @notice Subscription allocated by contract Creator to a user
     mapping(uint256 => uint64) private _operatorRenewal;
 
     event CollectionURIRevealed(string revealedURI);
@@ -217,6 +218,11 @@ contract Sotreus is
     }
 
     /** SUBSCRIPTION  **/
+    /// @notice Renews the subscription to an NFT
+    /// Throws if `tokenId` is not a valid NFT
+    /// @param tokenId The NFT to renew the subscription for
+    /// @param duration The number of months to extend a subscription for
+    /// cannot be more than 12 or less than 1
     function renewSubscription(
         uint256 tokenId,
         uint64 duration
@@ -251,6 +257,10 @@ contract Sotreus is
         emit SubscriptionUpdate(tokenId, newExpiration);
     }
 
+    /// @notice Cancels the subscription of an NFT
+    /// @dev Throws if `tokenId` is not a valid NFT
+    /// only deduct a week as a penalty when refunding the money.
+    /// @param tokenId The NFT to cancel the subscription for
     function cancelSubscription(
         uint256 tokenId
     ) external payable onlyWhenTokenExist(tokenId) {
@@ -287,10 +297,16 @@ contract Sotreus is
 
     /** Getter Functions **/
     ////// SUBSCRIPTION ///////////////
+    /// @notice Gets the expiration date of a subscription
+    /// @param tokenId The NFT to get the expiration date of
+    /// @return The expiration date of the subscription
     function expiresAt(uint256 tokenId) external view returns (uint64) {
         return _expirations[tokenId];
     }
 
+    /// @notice Determines whether a subscription can be renewed
+    /// @param tokenId The NFT to get the expiration date of
+    /// @return The renewability of a the subscription
     function isRenewable(uint256 tokenId) public view returns (bool) {
         if (_expirations[tokenId] > block.timestamp) {
             return true;
@@ -299,6 +315,8 @@ contract Sotreus is
         }
     }
 
+    /// @notice Calculate the refund for the token
+    /// @param tokenId The NFT to get the expiration date of
     function calculateCancellationFee(
         uint256 tokenId
     ) public view returns (uint256 payoutForTheUser) {

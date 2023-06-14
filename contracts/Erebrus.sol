@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "./common/ERC721A/extensions/ERC721ABurnable.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import "hardhat/console.sol";
-
 contract Erebrus is
     Context,
     IERC4907,
@@ -25,8 +23,10 @@ contract Erebrus is
         keccak256("EREBRUS_ADMIN_ROLE");
     bytes32 public constant EREBRUS_OPERATOR_ROLE =
         keccak256("EREBRUS_OPERATOR_ROLE");
-    //UNIX TIME FOR ONE MONTH
+    /// @notice UNIX TIME FOR ONE MONTH(30 days)
     uint256 public constant MONTH = 2592000;
+
+    /// @notice UNIX TIME FOR ONE WEEK(Taking 30 days a month)
     uint public constant WEEK = 648000;
 
     uint256 public immutable maxSupply; // Set in the constructor
@@ -50,8 +50,9 @@ contract Erebrus is
 
     mapping(uint256 => string) public clientConfig;
     mapping(uint256 => RentableItems) internal rentables; // storing the data of the user who are renting the NFT
-    mapping(address => uint256) public nftMints;
+    /// @notice To store subscription info
     mapping(uint256 => uint64) private _expirations; // subscription
+    /// @notice Subscription allocated by contract Creator to a user (in secs)
     mapping(uint256 => uint64) private _operatorRenewal;
 
     modifier whenNotpaused() {
@@ -309,6 +310,12 @@ contract Erebrus is
     }
 
     /** SUBSCRIPTION  **/
+    /// @notice Renews the subscription to an NFT
+    /// Throws if `tokenId` is not a valid NFT
+    /// Renewal can be done even if existing subscription is not ended
+    /// @param tokenId The NFT to renew the subscription for
+    /// @param duration The number of months to extend a subscription for
+    /// cannot be more than 12 or less than 1
     function renewSubscription(
         uint256 tokenId,
         uint64 duration
@@ -343,6 +350,10 @@ contract Erebrus is
         emit SubscriptionUpdate(tokenId, newExpiration);
     }
 
+    /// @notice Cancels the subscription of an NFT
+    /// @dev Throws if `tokenId` is not a valid NFT
+    /// only deduct a week as a penalty when refunding the money.
+    /// @param tokenId The NFT to cancel the subscription for
     function cancelSubscription(
         uint256 tokenId
     ) external payable onlyWhenTokenExist(tokenId) {
@@ -380,10 +391,17 @@ contract Erebrus is
     /** Getter Functions **/
 
     ////// SUBSCRIPTION ///////////////
+
+    /// @notice Gets the expiration date of a subscription
+    /// @param tokenId The NFT to get the expiration date of
+    /// @return The expiration date of the subscription
     function expiresAt(uint256 tokenId) external view returns (uint64) {
         return _expirations[tokenId];
     }
 
+    /// @notice Determines whether a subscription can be renewed
+    /// @param tokenId The NFT to get the expiration date of
+    /// @return The renewability of a the subscription
     function isRenewable(uint256 tokenId) public view returns (bool) {
         if (_expirations[tokenId] <= block.timestamp) {
             return true;
@@ -392,6 +410,9 @@ contract Erebrus is
         }
     }
 
+    /// @notice Calculate the refund for the token
+    /// @dev Throws if `tokenId` is not a valid NFT
+    /// @param tokenId The NFT to get the expiration date of
     function calculateCancellationFee(
         uint256 tokenId
     )
@@ -400,10 +421,12 @@ contract Erebrus is
         onlyWhenTokenExist(tokenId)
         returns (uint256 payoutForTheUser)
     {
-        uint64 time = _expirations[tokenId] - uint64(block.timestamp) - _operatorRenewal[tokenId];
+        uint64 time = _expirations[tokenId] -
+            uint64(block.timestamp) -
+            _operatorRenewal[tokenId];
         uint256 weeksLeft = uint256(time) / WEEK;
         uint256 cancellationCharges = (subscriptionPricePerMonth * 25) / 100;
-        payoutForTheUser = (weeksLeft - 1) * cancellationCharges; 
+        payoutForTheUser = (weeksLeft - 1) * cancellationCharges;
     }
 
     ////////////////////////////////
