@@ -4,11 +4,24 @@
 We are trying to implement a Utility NFT where subscription, royalty for the creator, and rental facilities are available, the NFT will be disclosed on the closing date.
 Utility non-fungible tokens (NFTs) are digital assets that represent a right or access to a service or product. They are similar to traditional NFTs in that they are unique and cannot be exchanged for other tokens on a one-to-one basis, but they differ in that they have a specific use beyond being a collectible or piece of artwork.
 
+## **POLYGON MUMBAI NETWORK**
+
 Erebrus deployed to: `0x0bB82D21c80B6b24cB94dbD505AC72612fc7077D`
 
 ```
 https://mumbai.polygonscan.com/address/0x0bB82D21c80B6b24cB94dbD505AC72612fc7077D#code
 ```
+
+
+## **FILECOIN CALIBERATION NETWORK**
+
+Erebrus deployed to: `t410f7mzdux3p7wmcz4newcfye23cyb5osfrapzetzna`
+
+```
+https://calibration.filfox.info/en/address/t410f7mzdux3p7wmcz4newcfye23cyb5osfrapzetzna
+```
+
+
 
 ## SOTREUS
 
@@ -19,10 +32,11 @@ Our Dedicated VPN establishes a secure and encrypted connection, safeguarding yo
 
 Sotreus deployed to: `0x71ae4062941491F6dcB64EF8653b7F85eED9D6e6`
 
+## **POLYGON MUMBAI NETWORK**
+
 ```
 https://mumbai.polygonscan.com/address/0x71ae4062941491F6dcB64EF8653b7F85eED9D6e6#code
 ```
-
 
 # Getting Started
 
@@ -77,7 +91,9 @@ npx hardhat test
 
 And you'll see and output file called `gas-report.txt`
 
-## Local Deployment 
+## **Deployment**
+
+***HARDHAT NETWORK***
 
 If you'd like to run your own local hardhat network, you can run:
 
@@ -85,18 +101,49 @@ If you'd like to run your own local hardhat network, you can run:
 npx hardhat node
 ```
 
-And then **in a different terminal**
+And then **in a different terminal** 
+For Erebrus
 
 ```
 npx hardhat run scripts/erebrus-deploy.js --network localhost
 ```
-                
+For Sortreus  
+               
 ```
 npx hardhat run scripts/sotreus-deploy.js --network localhost
+
+```
+And you should see transactions happen in your terminal that is running `npx hardhat node`
+
+***MUMBAI NETWORK***
+
+If you'd like to run in Mumbai Network, you can run:
+And then **in a different terminal** 
+
+*Erebrus*
+```
+npx erebrus-deploy --network maticmum
+```
+*Sotreus*
+               
+```
+npx sotreus-deploy --network maticmum
 ```
 
+***CALIBARATION NETWORK [FILECOIN TESTNET]***
 
-And you should see transactions happen in your terminal that is running `npx hardhat node`
+If you'd like to run in Mumbai Network, you can run:
+And then **in a different terminal** 
+
+*Erebrus*
+```
+npx erebrus-deploy --network calibarationnet
+```
+*Sotreus*
+               
+```
+npx sotreus-deploy --network calibarationnet
+```
 
 ### Important localhost note
 
