@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 import "./common/interface/IERC5643.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
-import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import "./common/ERC721A/extensions/ERC721ABurnable.sol";
 
 contract Sotreus is
@@ -87,12 +87,12 @@ contract Sotreus is
         // platFormFeeBasisPoint = _royaltyFeeBasisPoint;
 
         //SETUP ROLE
-        _setupRole(SOTREUS_ADMIN_ROLE, _msgSender());
         _setRoleAdmin(SOTREUS_ADMIN_ROLE, SOTREUS_ADMIN_ROLE);
         _setRoleAdmin(SOTREUS_OPERATOR_ROLE, SOTREUS_ADMIN_ROLE);
 
+        _grantRole(SOTREUS_ADMIN_ROLE,_msgSender());
         // add Admin to operator
-        grantRole(SOTREUS_OPERATOR_ROLE, _msgSender());
+        _grantRole(SOTREUS_OPERATOR_ROLE, _msgSender());
 
         // Setting default royalty to 5%
         _setDefaultRoyalty(_msgSender(), _royaltyFeeBasisPoint);

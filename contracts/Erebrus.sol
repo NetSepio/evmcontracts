@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import "./common/interface/IERC4907.sol";
 import "./common/interface/IERC5643.sol";
@@ -7,7 +7,8 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "./common/ERC721A/extensions/ERC721ABurnable.sol";
-import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+
 contract Erebrus is
     Context,
     IERC4907,
@@ -47,12 +48,21 @@ contract Erebrus is
         uint256 hourlyRate; // amountPerHour
     }
 
+    struct Node {
+        uint256 nodeId;
+        string status;
+        string region;
+    }
+
     mapping(uint256 => string) public clientConfig;
+
     mapping(uint256 => RentableItems) internal rentables; // storing the data of the user who are renting the NFT
     /// @notice To store subscription info
     mapping(uint256 => uint64) private _expirations; // subscription
     /// @notice Subscription allocated by contract Creator to a user (in secs)
     mapping(uint256 => uint64) private _operatorRenewal;
+
+    mapping(address => Node) public walletToNodeInfo;
 
     modifier whenNotpaused() {
         require(mintPaused == false, "Erebrus: NFT Minting Paused");
@@ -79,6 +89,10 @@ contract Erebrus is
         address indexed renter
     );
 
+    event NodeRegistered(uint256 nodeId, string status, string region);
+
+    event StatsPublished(uint256 nodeId, string status, string region);
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -95,12 +109,12 @@ contract Erebrus is
         platFormFeeBasisPoint = _platFormFeeBasisPoint;
         subscriptionPricePerMonth = _subscriptionPricePerMonth;
 
-        _setupRole(EREBRUS_ADMIN_ROLE, _msgSender());
         _setRoleAdmin(EREBRUS_ADMIN_ROLE, EREBRUS_ADMIN_ROLE);
         _setRoleAdmin(EREBRUS_OPERATOR_ROLE, EREBRUS_ADMIN_ROLE);
 
         // add Admin to operator
-        grantRole(EREBRUS_OPERATOR_ROLE, _msgSender());
+        _grantRole(EREBRUS_ADMIN_ROLE, _msgSender());
+        _grantRole(EREBRUS_OPERATOR_ROLE, _msgSender());
 
         // Setting default royalty
         _setDefaultRoyalty(_msgSender(), royaltyBasisPoint);
@@ -143,7 +157,7 @@ contract Erebrus is
         require(_totalMinted() <= maxSupply, "Erebrus: Collection Sold Out!");
         require(
             publicSalePrice * quantity >= msg.value,
-            "Sotreus: Insuffiecient amount!"
+            "Erebrus: Insuffiecient amount!"
         );
         _safeMint(_msgSender(), quantity);
 
@@ -163,6 +177,30 @@ contract Erebrus is
         }
         emit NFTMinted(_totalMinted(), previousSupply + quantity, _msgSender());
     }
+
+    function registerNode(
+        uint256 tokenId,
+        uint256 _nodeId,
+        string memory _status,
+        string memory _region
+    ) public {
+        require(ownerOf(tokenId) == _msgSender(), "Not a token owner");
+        walletToNodeInfo[_msgSender()] = Node(_nodeId, _status, _region);
+
+        emit NodeRegistered(_nodeId, _status, _region);
+    }
+
+    function publishStats(string memory _status, string memory _region) public {
+        walletToNodeInfo[_msgSender()].status = _status;
+        walletToNodeInfo[_msgSender()].region = _region;
+
+        emit StatsPublished(
+            walletToNodeInfo[_msgSender()].nodeId,
+            _status,
+            _region
+        );
+    }
+
     /**
      * @notice Burns `tokenId`. See {ERC721-_burn}.
      *
@@ -489,6 +527,7 @@ contract Erebrus is
         return (isApprovedForAll(ownerOf(tokenId), user) ||
             ownerOf(tokenId) == user);
     }
+
     /************************************* */
 
     function _beforeTokenTransfers(
