@@ -5,8 +5,9 @@ import "./PDid.sol";
 import "./ErebrusManager/IErebrusManager.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 
-contract ErebrusWiFiRegistry is Context {
+contract ErebrusRegistry is Context {
     uint256 private currentWifiNode;
+    uint256 private currentVpnNode;
 
     IEREBRUSMANAGER erebrusRoles;
 
@@ -23,7 +24,7 @@ contract ErebrusWiFiRegistry is Context {
     }
 
     struct VPNNode {
-        uint256 nodeId;
+        address user;
         address peaqDid;
         string nodename;
         string ipaddress;
@@ -34,18 +35,19 @@ contract ErebrusWiFiRegistry is Context {
     }
 
     mapping(uint256 => WiFiNode) public wifiNodeOperators;
-    mapping(bytes32 => mapping(uint256 => string)) public deviceCheckpoints;
-    mapping(bytes32 => uint256) public totalCheckpoints;
-    mapping(bytes32 => address) public deviceToUser; // change it
+    mapping(uint256 => mapping(uint256 => string)) public wifiDeviceCheckpoints;
+    mapping(uint256 => uint256) public totalCheckpoints;
     mapping(address => address) public didToUser;
 
-    mapping(address => VPNNode) public walletToVpnNodeInfo;
+    mapping(uint256 => VPNNode) public walletToVpnNodeInfo;
+    mapping(uint256 => mapping(uint256 => string)) public VpnDeviceCheckpoints;
+    mapping(uint256 => uint256) public vpnTotalCheckpoints;
 
     //@notice Modifier to ensure that the sender is an operator
     modifier onlyOperator() {
         require(
             erebrusRoles.isOperator(_msgSender()),
-            "EternumPass: Unauthorized!"
+            "Erebrus: Unauthorized!"
         );
         _;
     }
@@ -159,13 +161,18 @@ contract ErebrusWiFiRegistry is Context {
         emit NodeDeactivated(msg.sender);
     }
 
-    function deviceCheckpoint(
-        bytes32 deviceId,
+    function wifiDeviceCheckpoint(
+        uint256 nodeID,
         string memory dataHash
-    ) external onlyOperator {
-        totalCheckpoints[deviceId]++;
-        uint256 currentCheckpoint = totalCheckpoints[deviceId];
-        deviceCheckpoints[deviceId][currentCheckpoint] = dataHash;
+    ) external {
+        require(
+            erebrusRoles.isOperator(_msgSender()) ||
+                wifiNodeOperators[nodeID].user == _msgSender(),
+            "Erebrus: User is not authorized!"
+        );
+        totalCheckpoints[nodeID]++;
+        uint256 currentCheckpoint = totalCheckpoints[nodeID];
+        wifiDeviceCheckpoints[nodeID][currentCheckpoint] = dataHash;
     }
 
     function readAttribute(
@@ -224,15 +231,12 @@ contract ErebrusWiFiRegistry is Context {
     ///////////////////////////////////////////
     /************* VPN **********************/
 
-    /// @dev can only be called by user who is assigned to be operator.
-    function registerVpnNode(
-        address user,
-        VPNNode memory node
-    ) public onlyOperator {
-        walletToVpnNodeInfo[user] = node;
+    function registerVpnNode(VPNNode memory node) public {
+        uint256 nodeId = currentVpnNode++;
+        walletToVpnNodeInfo[nodeId] = node;
 
         emit VpnNodeRegistered(
-            node.nodeId,
+            nodeId,
             node.nodename,
             node.ipaddress,
             node.ispinfo,
@@ -241,15 +245,44 @@ contract ErebrusWiFiRegistry is Context {
         );
     }
 
-    function updateVPNNode(uint8 _status, string memory _region) public {
-        walletToVpnNodeInfo[_msgSender()].status = _status;
-        walletToVpnNodeInfo[_msgSender()].region = _region;
+    /// @dev can only be called by user who is assigned to be operator.
+    function delegateRegisterVpnNode(VPNNode memory node) public onlyOperator {
+        uint256 nodeId = currentVpnNode++;
+        walletToVpnNodeInfo[nodeId] = node;
 
-        emit VPNUpdated(
-            walletToVpnNodeInfo[_msgSender()].nodeId,
-            _status,
-            _region
+        emit VpnNodeRegistered(
+            nodeId,
+            node.nodename,
+            node.ipaddress,
+            node.ispinfo,
+            node.region,
+            node.location
         );
+    }
+
+    function vpnDeviceCheckpoint(
+        uint256 nodeID,
+        string memory dataHash
+    ) external {
+        require(
+            erebrusRoles.isOperator(_msgSender()) ||
+                walletToVpnNodeInfo[nodeID].user == _msgSender(),
+            "Erebrus: User is not authorized!"
+        );
+        vpnTotalCheckpoints[nodeID]++;
+        uint256 currentCheckpoint = vpnTotalCheckpoints[nodeID];
+        VpnDeviceCheckpoints[nodeID][currentCheckpoint] = dataHash;
+    }
+
+    function updateVPNNode(
+        uint256 nodeID,
+        uint8 _status,
+        string memory _region
+    ) public {
+        walletToVpnNodeInfo[nodeID].status = _status;
+        walletToVpnNodeInfo[nodeID].region = _region;
+
+        emit VPNUpdated(nodeID, _status, _region);
     }
 
     ///////////////////////////////////////////////
