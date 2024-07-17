@@ -114,6 +114,10 @@ contract ErebrusV2 is Context, ERC721Enumerable, ERC2981 {
         tokenURIs[tokenId] = metadataUri;
     }
 
+    function setRegistryContract(address registryContract) public onlyAdmin {
+        registry = IEREBRUSREGISTRY(registryContract);
+    }
+
     function _setBaseURI(string memory _tokenBaseURI) public onlyAdmin {
         baseUri = _tokenBaseURI;
     }
