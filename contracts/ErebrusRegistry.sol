@@ -105,7 +105,39 @@ contract ErebrusRegistry is Context {
     /************* Wifi **********************/
 
     /// @dev can only be called by user who is assigned to be operator
-    function registerNodeOperator(
+    function registerWifiNode(
+        string memory _deviceId,
+        address _peaqDid,
+        string memory _ssid,
+        string memory _location,
+        uint256 _pricePermin,
+        uint256 _latency
+    ) external onlyOperator {
+        uint256 nodeID = currentWifiNode++;
+        wifiNodeOperators[nodeID] = WiFiNode(
+            _msgSender(),
+            _deviceId,
+            _peaqDid,
+            _ssid,
+            _location,
+            _pricePermin,
+            _latency,
+            true
+        );
+
+        emit WifiNodeOperatorRegistered(
+            nodeID,
+            _msgSender(),
+            _deviceId,
+            _ssid,
+            _location,
+            _pricePermin,
+            _latency
+        );
+    }
+
+    /// @dev can only be called by user who is assigned to be operator
+    function delegateRegisterWifiNode(
         address user,
         string memory _deviceId,
         address _peaqDid,
