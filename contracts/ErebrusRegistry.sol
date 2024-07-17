@@ -19,7 +19,6 @@ contract ErebrusRegistry is Context {
         string ssid;
         string location;
         uint256 pricePerMinute;
-        uint256 latency;
         bool isActive;
     }
 
@@ -69,12 +68,11 @@ contract ErebrusRegistry is Context {
 
     event WifiNodeOperatorRegistered(
         uint256 nodeID,
-        address indexed operatorAddress,
+        address indexed owner,
         string deviceId,
         string ssid,
         string location,
-        uint256 pricePerMinute,
-        uint256 latency
+        uint256 pricePerMinute
     );
 
     event NodeOperatorUpdated(
@@ -104,14 +102,12 @@ contract ErebrusRegistry is Context {
     ///////////////////////////////////////////
     /************* Wifi **********************/
 
-    /// @dev can only be called by user who is assigned to be operator
     function registerWifiNode(
         string memory _deviceId,
         address _peaqDid,
         string memory _ssid,
         string memory _location,
-        uint256 _pricePermin,
-        uint256 _latency
+        uint256 _pricePermin
     ) external onlyOperator {
         uint256 nodeID = currentWifiNode++;
         wifiNodeOperators[nodeID] = WiFiNode(
@@ -121,7 +117,6 @@ contract ErebrusRegistry is Context {
             _ssid,
             _location,
             _pricePermin,
-            _latency,
             true
         );
 
@@ -131,8 +126,7 @@ contract ErebrusRegistry is Context {
             _deviceId,
             _ssid,
             _location,
-            _pricePermin,
-            _latency
+            _pricePermin
         );
     }
 
@@ -143,8 +137,7 @@ contract ErebrusRegistry is Context {
         address _peaqDid,
         string memory _ssid,
         string memory _location,
-        uint256 _pricePermin,
-        uint256 _latency
+        uint256 _pricePermin
     ) external onlyOperator {
         uint256 nodeID = currentWifiNode++;
         wifiNodeOperators[nodeID] = WiFiNode(
@@ -154,7 +147,6 @@ contract ErebrusRegistry is Context {
             _ssid,
             _location,
             _pricePermin,
-            _latency,
             true
         );
 
@@ -164,8 +156,7 @@ contract ErebrusRegistry is Context {
             _deviceId,
             _ssid,
             _location,
-            _pricePermin,
-            _latency
+            _pricePermin
         );
     }
 
@@ -319,7 +310,6 @@ contract ErebrusRegistry is Context {
 
     ///////////////////////////////////////////////
 
-    //CHANGE IT
     function getWifiDetails(
         uint256 nodeID
     ) external view returns (uint256 price, address owner) {
