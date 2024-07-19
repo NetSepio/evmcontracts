@@ -33,12 +33,14 @@ contract ErebrusRegistry is Context {
         uint8 status;
     }
 
+    //@dev Maps device IDs to their respective owners, allowing for easy lookup of the device owner.
+    mapping(address => address) public didToUser;
+
     mapping(uint256 => WiFiNode) public wifiNodeOperators;
     mapping(uint256 => mapping(uint256 => string)) public wifiDeviceCheckpoints;
     mapping(uint256 => uint256) public wifiTotalCheckpoints;
-    mapping(address => address) public didToUser;
 
-    mapping(uint256 => VPNNode) public walletToVpnNodeInfo;
+    mapping(uint256 => VPNNode) public vpnNodeOperators;
     mapping(uint256 => mapping(uint256 => string)) public VpnDeviceCheckpoints;
     mapping(uint256 => uint256) public vpnTotalCheckpoints;
 
@@ -218,6 +220,7 @@ contract ErebrusRegistry is Context {
             value,
             validity_for
         );
+
         require(success, "Failed to add attribute");
         emit AddAttribute(user, did_account, name, value, validity_for);
         return success;
@@ -256,7 +259,7 @@ contract ErebrusRegistry is Context {
 
     function registerVpnNode(VPNNode memory node) public {
         uint256 nodeId = currentVpnNode++;
-        walletToVpnNodeInfo[nodeId] = node;
+        vpnNodeOperators[nodeId] = node;
 
         emit VpnNodeRegistered(
             nodeId,
@@ -271,7 +274,7 @@ contract ErebrusRegistry is Context {
     /// @dev can only be called by user who is assigned to be operator.
     function delegateRegisterVpnNode(VPNNode memory node) public onlyOperator {
         uint256 nodeId = currentVpnNode++;
-        walletToVpnNodeInfo[nodeId] = node;
+        vpnNodeOperators[nodeId] = node;
 
         emit VpnNodeRegistered(
             nodeId,
@@ -289,7 +292,7 @@ contract ErebrusRegistry is Context {
     ) external {
         require(
             erebrusRoles.isOperator(_msgSender()) ||
-                walletToVpnNodeInfo[nodeID].user == _msgSender(),
+                vpnNodeOperators[nodeID].user == _msgSender(),
             "Erebrus: User is not authorized!"
         );
         vpnTotalCheckpoints[nodeID]++;
@@ -302,8 +305,8 @@ contract ErebrusRegistry is Context {
         uint8 _status,
         string memory _region
     ) public {
-        walletToVpnNodeInfo[nodeID].status = _status;
-        walletToVpnNodeInfo[nodeID].region = _region;
+        vpnNodeOperators[nodeID].status = _status;
+        vpnNodeOperators[nodeID].region = _region;
 
         emit VPNUpdated(nodeID, _status, _region);
     }
