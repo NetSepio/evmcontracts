@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./PDid.sol";
-import "./ErebrusManager/IErebrusManager.sol";
+import "./did.sol";
+import "./erebrusmanager/interfaces/IErebrusManager.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 
 contract ErebrusRegistry is Context {
@@ -35,7 +35,7 @@ contract ErebrusRegistry is Context {
 
     mapping(uint256 => WiFiNode) public wifiNodeOperators;
     mapping(uint256 => mapping(uint256 => string)) public wifiDeviceCheckpoints;
-    mapping(uint256 => uint256) public totalCheckpoints;
+    mapping(uint256 => uint256) public wifiTotalCheckpoints;
     mapping(address => address) public didToUser;
 
     mapping(uint256 => VPNNode) public walletToVpnNodeInfo;
@@ -193,8 +193,8 @@ contract ErebrusRegistry is Context {
                 wifiNodeOperators[nodeID].user == _msgSender(),
             "Erebrus: User is not authorized!"
         );
-        totalCheckpoints[nodeID]++;
-        uint256 currentCheckpoint = totalCheckpoints[nodeID];
+        wifiTotalCheckpoints[nodeID]++;
+        uint256 currentCheckpoint = wifiTotalCheckpoints[nodeID];
         wifiDeviceCheckpoints[nodeID][currentCheckpoint] = dataHash;
     }
 
