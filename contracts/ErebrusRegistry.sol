@@ -110,7 +110,7 @@ contract ErebrusRegistry is Context {
         string memory _ssid,
         string memory _location,
         uint256 _pricePermin
-    ) external onlyOperator {
+    ) external  {
         uint256 nodeID = currentWifiNode++;
         wifiNodeOperators[nodeID] = WiFiNode(
             _msgSender(),
