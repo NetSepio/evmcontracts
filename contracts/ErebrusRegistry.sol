@@ -110,40 +110,10 @@ contract ErebrusRegistry is Context {
         string memory _ssid,
         string memory _location,
         uint256 _pricePermin
-    ) external  {
+    ) external {
         uint256 nodeID = currentWifiNode++;
         wifiNodeOperators[nodeID] = WiFiNode(
             _msgSender(),
-            _deviceId,
-            _peaqDid,
-            _ssid,
-            _location,
-            _pricePermin,
-            true
-        );
-
-        emit WifiNodeOperatorRegistered(
-            nodeID,
-            _msgSender(),
-            _deviceId,
-            _ssid,
-            _location,
-            _pricePermin
-        );
-    }
-
-    /// @dev can only be called by user who is assigned to be operator
-    function delegateRegisterWifiNode(
-        address user,
-        string memory _deviceId,
-        address _peaqDid,
-        string memory _ssid,
-        string memory _location,
-        uint256 _pricePermin
-    ) external onlyOperator {
-        uint256 nodeID = currentWifiNode++;
-        wifiNodeOperators[nodeID] = WiFiNode(
-            user,
             _deviceId,
             _peaqDid,
             _ssid,
@@ -167,7 +137,7 @@ contract ErebrusRegistry is Context {
         string memory ssid,
         string memory location,
         uint256 pricePerMin
-    ) external onlyOperator {
+    ) external {
         require(
             wifiNodeOperators[nodeID].isActive,
             "DWifi_Registry: User not authorized!"
@@ -258,21 +228,6 @@ contract ErebrusRegistry is Context {
     /************* VPN **********************/
 
     function registerVpnNode(VPNNode memory node) public {
-        uint256 nodeId = currentVpnNode++;
-        vpnNodeOperators[nodeId] = node;
-
-        emit VpnNodeRegistered(
-            nodeId,
-            node.nodename,
-            node.ipaddress,
-            node.ispinfo,
-            node.region,
-            node.location
-        );
-    }
-
-    /// @dev can only be called by user who is assigned to be operator.
-    function delegateRegisterVpnNode(VPNNode memory node) public onlyOperator {
         uint256 nodeId = currentVpnNode++;
         vpnNodeOperators[nodeId] = node;
 
