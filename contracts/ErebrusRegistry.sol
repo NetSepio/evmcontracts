@@ -15,7 +15,7 @@ contract ErebrusRegistry is Context {
     struct WiFiNode {
         address user;
         string deviceId; ///  convert to string
-        address peaqDid;
+        string peaqDid;
         string ssid;
         string location;
         uint256 pricePerMinute;
@@ -24,7 +24,7 @@ contract ErebrusRegistry is Context {
 
     struct VPNNode {
         address user;
-        address peaqDid;
+        string peaqDid;
         string nodename;
         string ipaddress;
         string ispinfo;
@@ -106,12 +106,12 @@ contract ErebrusRegistry is Context {
 
     function registerWifiNode(
         string memory _deviceId,
-        address _peaqDid,// Owner Wallet Address
+        string memory _peaqDid, // Owner Wallet Address
         string memory _ssid,
         string memory _location,
-        uint256 _pricePermin// Wei
+        uint256 _pricePermin // Wei
     ) external {
-        uint256 nodeID = currentWifiNode++; 
+        uint256 nodeID = currentWifiNode++;
         wifiNodeOperators[nodeID] = WiFiNode(
             _msgSender(),
             _deviceId,
@@ -140,7 +140,12 @@ contract ErebrusRegistry is Context {
     ) external {
         require(
             wifiNodeOperators[nodeID].isActive,
-            "DWifi_Registry: User not authorized!"
+            "ErebrusRegistry: Node is not active"
+        );
+        require(
+            erebrusRoles.isOperator(_msgSender()) ||
+                wifiNodeOperators[nodeID].user == _msgSender(),
+            "ErebrusRegistry: User is not authorized!"
         );
         WiFiNode storage operator = wifiNodeOperators[nodeID];
 
@@ -163,7 +168,7 @@ contract ErebrusRegistry is Context {
         require(
             erebrusRoles.isOperator(_msgSender()) ||
                 wifiNodeOperators[nodeID].user == _msgSender(),
-            "Erebrus: User is not authorized!"
+            "ErebrusRegistry: User is not authorized!"
         );
         wifiTotalCheckpoints[nodeID]++;
         uint256 currentCheckpoint = wifiTotalCheckpoints[nodeID];
@@ -248,7 +253,7 @@ contract ErebrusRegistry is Context {
         require(
             erebrusRoles.isOperator(_msgSender()) ||
                 vpnNodeOperators[nodeID].user == _msgSender(),
-            "Erebrus: User is not authorized!"
+            "ErebrusRegistry: User is not authorized!"
         );
         vpnTotalCheckpoints[nodeID]++;
         uint256 currentCheckpoint = vpnTotalCheckpoints[nodeID];
@@ -260,6 +265,11 @@ contract ErebrusRegistry is Context {
         uint8 _status,
         string memory _region
     ) public {
+        require(
+            erebrusRoles.isOperator(_msgSender()) ||
+                vpnNodeOperators[nodeID].user == _msgSender(),
+            "ErebrusRegistry: User is not authorized!"
+        );
         vpnNodeOperators[nodeID].status = _status;
         vpnNodeOperators[nodeID].region = _region;
 
