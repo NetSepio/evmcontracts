@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./did.sol";
-import "./erebrusmanager/interfaces/IErebrusManager.sol";
+import "./PDid.sol";
+import "./ErebrusManager/IErebrusManager.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 
 contract ErebrusRegistry is Context {
@@ -106,12 +106,12 @@ contract ErebrusRegistry is Context {
 
     function registerWifiNode(
         string memory _deviceId,
-        address _peaqDid,
+        address _peaqDid,// Owner Wallet Address
         string memory _ssid,
         string memory _location,
-        uint256 _pricePermin
+        uint256 _pricePermin// Wei
     ) external {
-        uint256 nodeID = currentWifiNode++;
+        uint256 nodeID = currentWifiNode++; 
         wifiNodeOperators[nodeID] = WiFiNode(
             _msgSender(),
             _deviceId,

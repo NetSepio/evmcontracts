@@ -34,14 +34,14 @@
     "typescript": "^4.5.5"
   },
   "scripts": {
+    "compile" : "hardhat compile",
     "test": "hardhat test",
     "test:staging": "hardhat test --network goerli",
     "lint": "solhint 'contracts/**/*.sol'",
     "lint:fix": "solhint 'contracts/**/*.sol' --fix",
     "format": "prettier --write .",
     "coverage": "hardhat coverage",
-    "deploy-erebrus" : "hardhat run scripts/erebrus-deploy.js",
-    "compile" : "hardhat compile"
+    "deploy-erebrus" : "hardhat run scripts/erebrus-deploy.js"
   },
   "dependencies": {
     "@chainlink/contracts": "^1.1.1",

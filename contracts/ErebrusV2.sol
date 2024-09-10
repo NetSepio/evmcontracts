@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "./erebrusmanager/interfaces/IErebrusManager.sol";
+import "./ErebrusManager/IErebrusManager.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
@@ -88,14 +88,14 @@ contract ErebrusV2 is Context, ERC721Enumerable, ERC2981 {
         uint256 _publicSalePrice,
         uint256 _subscriptionRate,
         uint96 royaltyBasisPoint,
-        address erebrusContract,
+        address erebrusManagerContract,
         address _registryAddr
     ) ERC721(_name, _symbol) {
         baseUri = _initialURI;
         publicSalePrice = _publicSalePrice;
         subscriptionPerMonth = _subscriptionRate;
         _setDefaultRoyalty(_msgSender(), uint96(royaltyBasisPoint));
-        erebrusRoles = IEREBRUSMANAGER(erebrusContract);
+        erebrusRoles = IEREBRUSMANAGER(erebrusManagerContract);
         registry = IEREBRUSREGISTRY(_registryAddr);
     }
 
@@ -112,6 +112,10 @@ contract ErebrusV2 is Context, ERC721Enumerable, ERC2981 {
             "Erebrus: User is not token owner"
         );
         tokenURIs[tokenId] = metadataUri;
+    }
+
+    function setPublicSalePrice(uint256 _publicSalePrice) external {
+        publicSalePrice = _publicSalePrice;
     }
 
     function setRegistryContract(address registryContract) public onlyAdmin {
